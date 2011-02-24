@@ -1,0 +1,14 @@
+Name:                hgit
+Version:             0.0
+Description:         Git for Haskell
+License-file:        LICENSE
+Author:              Sakari Jokinen
+Maintainer:          sakariij@gmail.com
+Build-Type:          Simple
+Cabal-Version:       >=1.2
+
+library
+  build-depends:
+    base >= 3 && < 5,
+    hlibgit2
+  exposed-modules:

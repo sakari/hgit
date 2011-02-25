@@ -26,7 +26,8 @@ library
   hs-source-dirs: src 
   build-depends:
     base >= 3 && < 5,
-    hlibgit2
+    hlibgit2,
+    bytestring
   exposed-modules:
     Git
   default-extensions: NamedFieldPuns

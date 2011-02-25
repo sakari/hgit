@@ -2,11 +2,13 @@ module Test.TestGit where
 import qualified Git
 import Test.QuickCheck
 import Data.Maybe
+import Data.String
 import System.FilePath
 import System.Posix.Directory
 import System.Directory
 import System.IO.Unsafe
 import Control.Exception
+import Control.Monad
 import Prelude hiding (catch)
 
 inSandboxDirectory::FilePath -> IO a -> IO a
@@ -39,12 +41,44 @@ sandbox io =
 
 newtype RepoName = RepoName FilePath 
                  deriving Show
+                          
 instance Arbitrary RepoName where
   arbitrary = RepoName `fmap` listOf1 (choose ('a', 'z'))
   
 instance Arbitrary Git.Oid where  
   arbitrary = (fromJust . Git.oidMkStr) `fmap` vectorOf 40 (oneof [choose ('a', 'f'), choose('0', '9')])
   
+instance Arbitrary Git.Blob where
+  arbitrary = fromString `fmap` listOf1 arbitrary
+  
+instance Arbitrary Git.GitTime where  
+  arbitrary = liftM2 Git.GitTime arbitrary arbitrary
+  
+instance Arbitrary Git.Signature where  
+  arbitrary = liftM3 Git.Signature arbitrary arbitrary arbitrary
+  
+instance Arbitrary Git.Commit where
+  arbitrary = do
+    oid <- arbitrary
+    msg <- arbitrary
+    short_msg <- arbitrary
+    author <- arbitrary
+    committer <- arbitrary
+    time <- arbitrary
+    offset <- arbitrary
+    tree <- arbitrary
+    parents <- arbitrary
+    return Git.Commit { Git.commit_id = oid
+                      , Git.commit_message = msg
+                      , Git.commit_short_message = short_msg
+                      , Git.commit_time = time
+                      , Git.commit_author = author
+                      , Git.commit_committer = committer
+                      , Git.commit_time_offset = offset
+                      , Git.commit_tree = tree
+                      , Git.commit_parents = parents
+                      }
+
 prop_opening_nonexistant_repo_fails (RepoName repo) =
   sandbox $ isNothing `fmap` Git.open repo
 
@@ -66,10 +100,16 @@ prop_lookup_nonexisting_commit oid =
   given_a_repository $ \repo -> do
     isNothing `fmap` Git.commitLookup repo oid
         
-prop_create_a_commit =
+prop_oid_cpy oid = sandbox $ do
+  (oid ==) `fmap` Git.oidCpy oid
+  
+prop_save_and_load_a_blob blob =
   given_a_repository $ \repo -> do
-    isJust `fmap` Git.commitNew repo
-
+    Just oid <- Git.blobWrite repo blob    
+    Just blob_saved <- Git.blobLookup repo oid
+    print $ show blob ++ "<>" ++ show blob_saved
+    return $ blob_saved == blob
+    
 run title prop = do
   print $ "######### Test: " ++ title
   quickCheckResult prop
@@ -78,5 +118,7 @@ tests = [ run "open nonexisting repo" prop_opening_nonexistant_repo_fails
         , run "open initialized repo" prop_opening_an_initialized_repo_succeeds
         , run "initialize a repo" prop_initializing_a_normal_repository_succeeds
         , run "free created repo" prop_closing_an_initialized_repo
+        , run "save and load a blob" prop_save_and_load_a_blob
         , run "lookup a non existing commit" prop_lookup_nonexisting_commit
-        , run "create a commit" prop_create_a_commit ]
+        , run "oid contents stay the same during cpy" prop_oid_cpy
+        ]

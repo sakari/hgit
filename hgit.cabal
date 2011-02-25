@@ -29,3 +29,4 @@ library
     hlibgit2
   exposed-modules:
     Git
+  default-extensions: NamedFieldPuns

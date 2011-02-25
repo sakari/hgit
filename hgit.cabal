@@ -5,10 +5,23 @@ License-file:        LICENSE
 Author:              Sakari Jokinen
 Maintainer:          sakariij@gmail.com
 Build-Type:          Simple
-Cabal-Version:       >=1.2
+Cabal-Version:       >=1.10
+
+test-suite git_test
+  main-is: Main.hs
+  default-language: Haskell98
+  type: exitcode-stdio-1.0
+  hs-source-dirs: tests
+  build-depends:
+    base >= 3,
+    hgit
+  extra-libraries: git2
 
 library
+  default-language: Haskell98
+  hs-source-dirs: src 
   build-depends:
     base >= 3 && < 5,
     hlibgit2
   exposed-modules:
+    Git

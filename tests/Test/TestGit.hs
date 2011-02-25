@@ -103,10 +103,10 @@ prop_lookup_nonexisting_commit oid =
 prop_oid_cpy oid = sandbox $ do
   (oid ==) `fmap` Git.oidCpy oid
   
-prop_save_and_load_a_blob blob =
+prop_save_and_load_a_blob (blob::Git.Blob) =
   given_a_repository $ \repo -> do
-    Just oid <- Git.blobWrite repo blob    
-    Just blob_saved <- Git.blobLookup repo oid
+    Just oid <- Git.write repo blob    
+    Just blob_saved <- Git.lookup repo oid
     print $ show blob ++ "<>" ++ show blob_saved
     return $ blob_saved == blob
     

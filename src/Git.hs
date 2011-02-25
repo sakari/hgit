@@ -3,8 +3,7 @@ module Git (Repository
            , GitTime(..)
            , Signature(..)
            , Blob
-           , blobLookup
-           , blobWrite
+           , Object(..)
            , Oid
            , oidCpy
            , oidMkStr
@@ -140,14 +139,24 @@ initialize path is_bare = fmap'2 Repository $ git_out_param go
 free::Repository -> IO ()
 free = c'git_repository_free . repoPtr
 
-blobLookup::Repository -> Oid -> IO (Maybe Blob)
-blobLookup Repository { repoPtr } Oid { oidPtr } = do
-  git_out_param (\blobOut -> c'git_blob_lookup blobOut repoPtr oidPtr) >>= fmapMaybeInF createBlob
-    where
-      createBlob blobPtr = do
-        buffer <- c'git_blob_rawcontent blobPtr
-        buffer_size <- c'git_blob_rawsize blobPtr
-        Blob `fmap` packCStringLen (buffer, fromEnum buffer_size)
+class Object o where
+  lookup::Repository -> Oid -> IO (Maybe o)
+  write::Repository -> o -> IO (Maybe Oid)
+
+instance Object Blob where
+  lookup Repository { repoPtr } Oid { oidPtr } = do
+    git_out_param (\blobOut -> c'git_blob_lookup blobOut repoPtr oidPtr) >>= fmapMaybeInF createBlob
+      where
+        createBlob blobPtr = do
+          buffer <- c'git_blob_rawcontent blobPtr
+          buffer_size <- c'git_blob_rawsize blobPtr
+          Blob `fmap` packCStringLen (buffer, fromEnum buffer_size)
+  write Repository { repoPtr } Blob { blob } = do
+    Just c'blob <- git_out_param $ (\blobParam -> c'git_blob_new blobParam repoPtr)
+    useAsCStringLen blob $ \(blob_array, blob_array_size) -> c'git_blob_set_rawcontent c'blob (castPtr blob_array) $ toEnum blob_array_size
+    r <- c'git_object_write $ castPtr c'blob
+    oidPtr <- c'git_object_id $ castPtr c'blob                  
+    Just `fmap` oidCpy (Oid oidPtr)
 
 commitLookup::Repository -> Oid -> IO (Maybe Commit)
 commitLookup Repository { repoPtr } Oid { oidPtr } = 
@@ -157,13 +166,6 @@ fmapMaybeInF::(Monad m, Functor m) => (a -> m b) -> Maybe a -> m (Maybe b)
 fmapMaybeInF g Nothing = return Nothing
 fmapMaybeInF g (Just argument) = Just `fmap` g argument
            
-blobWrite::Repository -> Blob -> IO (Maybe Oid)                                 
-blobWrite Repository { repoPtr } Blob { blob } = do
-  Just c'blob <- git_out_param $ (\blobParam -> c'git_blob_new blobParam repoPtr)
-  useAsCStringLen blob $ \(blob_array, blob_array_size) -> c'git_blob_set_rawcontent c'blob (castPtr blob_array) $ toEnum blob_array_size
-  r <- c'git_object_write $ castPtr c'blob
-  oidPtr <- c'git_object_id $ castPtr c'blob                  
-  Just `fmap` oidCpy (Oid oidPtr)
   
 commitWrite::Repository -> Commit -> IO (Maybe Oid)
 commitWrite Repository { repoPtr } Commit { commit_message

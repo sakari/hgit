@@ -20,6 +20,8 @@ test-suite git_test
     directory,
     unix
   extra-libraries: git2
+  default-extensions: 
+    ScopedTypeVariables
 
 library
   default-language: Haskell98
@@ -30,4 +32,5 @@ library
     bytestring
   exposed-modules:
     Git
-  default-extensions: NamedFieldPuns
+  default-extensions: 
+    NamedFieldPuns

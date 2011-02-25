@@ -13,8 +13,10 @@ test-suite git_test
   type: exitcode-stdio-1.0
   hs-source-dirs: tests
   build-depends:
-    base >= 3,
-    hgit
+    base >= 4,
+    hgit,
+    filepath >= 1.2.0.0,
+    QuickCheck >= 2.4.0.0
   extra-libraries: git2
 
 library

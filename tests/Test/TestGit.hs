@@ -62,10 +62,14 @@ prop_opening_an_initialized_repo_succeeds (RepoName name) =
     Just repo <- Git.initialize name False
     isJust `fmap` Git.open (joinPath [name, ".git"]) 
 
-prop_lookup_nonexisting_commit sha1 =
+prop_lookup_nonexisting_commit oid =
   given_a_repository $ \repo -> do
-    isNothing `fmap` Git.commitLookup repo sha1
+    isNothing `fmap` Git.commitLookup repo oid
         
+prop_create_a_commit =
+  given_a_repository $ \repo -> do
+    isJust `fmap` Git.commitNew repo
+
 run title prop = do
   print $ "######### Test: " ++ title
   quickCheckResult prop

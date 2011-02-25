@@ -5,7 +5,8 @@ module Git (Repository
            , open
            , initialize
            , free
-           , commitLookup) where
+           , commitLookup
+           , commitNew) where
 import Bindings.Libgit2
 import Foreign hiding (free)
 import Foreign.C.String
@@ -36,28 +37,33 @@ oidMkStr hex
         else return $ Just $ Oid oidPtr
 
 open::FilePath -> IO (Maybe Repository)
-open path = alloca $ \repoPtr -> do
-  withCString path $ \pathPtr -> do
-    r <- c'git_repository_open repoPtr pathPtr
-    if  (r < 0) then return Nothing
-      else (Just . Repository) `fmap` peek repoPtr
-    
+open path = git_out_param Repository go
+  where 
+    go repoPtr = withCString path $ \pathPtr -> do
+      c'git_repository_open repoPtr pathPtr
+        
 initialize::FilePath -> Bool -> IO (Maybe Repository)
-initialize path is_bare = alloca $ \repoPtr -> do
-  withCString path $ \pathPtr -> do
-    r <- c'git_repository_init repoPtr pathPtr $ c'bool is_bare
-    if (r < 0) then return Nothing
-      else (Just . Repository) `fmap` peek repoPtr
+initialize path is_bare = git_out_param Repository go
+  where 
+    go repoPtr = withCString path $ \pathPtr -> do
+      c'git_repository_init repoPtr pathPtr $ c'bool is_bare
 
 free::Repository -> IO ()
 free = c'git_repository_free . repoPtr
 
 commitLookup::Repository -> Oid -> IO (Maybe Commit)
-commitLookup Repository { repoPtr } Oid { oidPtr } = do
-  alloca $ \commitPtr -> do
-    r <- c'git_commit_lookup commitPtr repoPtr oidPtr
-    if (r < 0) then return Nothing
-      else (Just . Commit) `fmap` peek commitPtr 
+commitLookup Repository { repoPtr } Oid { oidPtr } = 
+  git_out_param Commit (\commitPtr -> c'git_commit_lookup commitPtr repoPtr oidPtr)
+
+commitNew::Repository -> IO (Maybe Commit)
+commitNew Repository { repoPtr } =
+  git_out_param  Commit $ flip c'git_commit_new repoPtr
+
+git_out_param::(Ptr a -> b) -> (Ptr (Ptr a) -> IO CInt) -> IO (Maybe b)
+git_out_param resultWrapper git_call  = alloca $ \outParam -> do
+  r <- git_call outParam
+  if (r < 0) then return Nothing
+    else (Just . resultWrapper) `fmap` peek outParam
 
 c'bool::Bool -> CInt
 c'bool True = 1

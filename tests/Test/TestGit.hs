@@ -79,4 +79,4 @@ tests = [ run "open nonexisting repo" prop_opening_nonexistant_repo_fails
         , run "initialize a repo" prop_initializing_a_normal_repository_succeeds
         , run "free created repo" prop_closing_an_initialized_repo
         , run "lookup a non existing commit" prop_lookup_nonexisting_commit
-        ]
+        , run "create a commit" prop_create_a_commit ]

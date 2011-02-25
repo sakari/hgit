@@ -42,5 +42,23 @@ prop_opening_nonexistant_repo_fails (RepoName repo) =
 prop_initializing_a_normal_repository_succeeds (RepoName repo) = 
   sandbox $ isJust `fmap` Git.initialize repo False 
 
-tests = [quickCheckResult prop_opening_nonexistant_repo_fails
-        ,quickCheckResult prop_initializing_a_normal_repository_succeeds]
+prop_closing_an_initialized_repo (RepoName name) =
+  sandbox $ do
+    Just repo <- Git.initialize name False 
+    Git.free repo
+    return True
+
+prop_opening_an_initialized_repo_succeeds (RepoName name) =
+  sandbox $ do
+    Just repo <- Git.initialize name False
+    isJust `fmap` Git.open (joinPath [name, ".git"]) 
+
+run title prop = do
+  print $ "######### Test: " ++ title
+  quickCheckResult prop
+
+tests = [run "open nonexisting repo" prop_opening_nonexistant_repo_fails
+        , run "open initialized repo" prop_opening_an_initialized_repo_succeeds
+        , run "initialize a repo" prop_initializing_a_normal_repository_succeeds
+        , run "free created repo" prop_closing_an_initialized_repo
+        ]

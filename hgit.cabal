@@ -16,7 +16,9 @@ test-suite git_test
     base >= 4,
     hgit,
     filepath >= 1.2.0.0,
-    QuickCheck >= 2.4.0.0
+    QuickCheck >= 2.4.0.0,
+    directory,
+    unix
   extra-libraries: git2
 
 library

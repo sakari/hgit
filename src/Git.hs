@@ -3,6 +3,8 @@ module Git (Repository
            , GitTime(..)
            , Signature(..)
            , Blob
+           , Tree(..)
+           , TreeEntry(..)
            , Object(..)
            , Oid
            , oidCpy
@@ -13,15 +15,16 @@ module Git (Repository
            , commitLookup
            , commitWrite
            ) where
+import Data.List(sort)
 import Bindings.Libgit2
 import Data.Maybe
 import Data.String
 import Foreign hiding (free)
 import Foreign.C.String
 import Foreign.C.Types
-import Control.Monad(when, liftM3)
+import Control.Monad(when, liftM3, forM, forM_)
 import Control.Applicative
-import Data.ByteString.Char8 hiding (take, length)
+import Data.ByteString.Char8 hiding (take, length, sort)
 
 data GitTime = GitTime { git_time::Int
                        , git_offset::Int
@@ -87,8 +90,53 @@ fromGitCommit commitPtr = do
     commitTreeOid = return $ fromJust $ oidMkStr (take 40 $ repeat 'a')
     
 newtype Oid = Oid { oidPtr::Ptr C'git_oid }
+instance Ord Oid where
+  oid_left `compare` oid_right = oidFmt oid_left `compare` oidFmt oid_right
+
 newtype Repository = Repository { repoPtr :: Ptr C'git_repository }
 
+data TreeEntry = TreeEntry { tree_entry_oid::Oid
+                           , tree_entry_filepath::FilePath
+                           , tree_entry_attributes::Int } 
+               deriving (Eq, Show, Ord)
+data Tree = Tree { tree_entries::[TreeEntry] }
+            deriving (Show)
+                     
+instance Eq Tree where
+  tree_left == tree_right = (tree_left `compare` tree_right) == EQ
+instance Ord Tree where
+  tree_left `compare` tree_right = sort (tree_entries tree_left) `compare` sort (tree_entries tree_right)
+                     
+writeObject optr = do
+  r <- c'git_object_write $ castPtr optr
+  oidPtr <- c'git_object_id $ castPtr optr
+  Just `fmap` oidCpy (Oid oidPtr)
+  
+instance Object Tree where
+  write Repository { repoPtr } Tree { tree_entries } = do
+    Just treePtr <- git_out_param $ (\treeOutPtr -> c'git_tree_new treeOutPtr repoPtr)
+    forM_ tree_entries $ addTreeEntry treePtr
+    writeObject treePtr
+    where    
+      addTreeEntry treePtr TreeEntry { tree_entry_oid, tree_entry_attributes, tree_entry_filepath} = 
+        withCString tree_entry_filepath $ \c'filepath -> do
+           r <- c'git_tree_add_entry nullPtr treePtr (oidPtr tree_entry_oid) c'filepath $ toEnum tree_entry_attributes
+           when (r < 0) $ error "error adding tree_entry"   
+
+  lookup Repository { repoPtr } Oid { oidPtr } = 
+    git_out_param (\treeOutPtr -> c'git_tree_lookup treeOutPtr repoPtr oidPtr) >>= fmapMaybeInF getTree
+      where
+        getTree treePtr = do
+          c'entries <- c'git_tree_entrycount treePtr
+          fmap Tree $ forM [0 .. c'entries - 1] $ \idx ->
+            c'git_tree_entry_byindex treePtr idx >>= getTreeEntry
+        getTreeEntry treeEntryPtr = liftM3 TreeEntry oid filename attributes
+          where
+            oid = c'git_tree_entry_id treeEntryPtr >>= oidCpy . Oid
+            attributes = fmap fromEnum $ c'git_tree_entry_attributes treeEntryPtr  
+            filename = c'git_tree_entry_name treeEntryPtr >>= peekCString 
+            
+            
 data Blob = Blob { blob::ByteString }
             deriving (Show, Eq)
                      

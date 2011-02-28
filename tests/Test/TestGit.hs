@@ -48,6 +48,36 @@ instance Arbitrary RepoName where
 instance Arbitrary Git.Oid where  
   arbitrary = (fromJust . Git.oidMkStr) `fmap` vectorOf 40 (oneof [choose ('a', 'f'), choose('0', '9')])
   
+instance Arbitrary Git.Tree where
+  arbitrary = liftM Git.Tree $ listOf1 arbitrary
+  shrink = fmap Git.Tree . shrink . Git.tree_entries 
+
+newtype Path = Path { fromPath::FilePath }
+instance Arbitrary Path where
+  arbitrary = fmap Path $ listOf validPathChars
+    where
+      -- this is certainly too narrow set
+      validPathChars = choose('a', 'z') 
+  shrink = fmap Path . shrink . fromPath
+  
+  
+newtype FileMode = FileMode { fromFileMode::Int }
+                 deriving (Eq, Ord, Show, Num)  
+                          
+instance Arbitrary FileMode where
+  arbitrary = fmap FileMode $ choose(0, 0o777777)
+  shrink n | n > 0 = [n - 1]
+           | otherwise = [] 
+    
+instance Arbitrary Git.TreeEntry where
+  arbitrary = liftM3 Git.TreeEntry arbitrary (fmap fromPath arbitrary) (fmap fromFileMode arbitrary)
+  shrink Git.TreeEntry { Git.tree_entry_oid, Git.tree_entry_filepath, Git.tree_entry_attributes } = 
+    shrunk_oid ++ shrunk_path ++ shrunk_attributes
+    where
+      shrunk_oid = [Git.TreeEntry oid tree_entry_filepath tree_entry_attributes | oid <- shrink tree_entry_oid]
+      shrunk_path = [Git.TreeEntry tree_entry_oid path tree_entry_attributes | path <- shrink tree_entry_filepath]
+      shrunk_attributes = [Git.TreeEntry tree_entry_oid tree_entry_filepath attrs | attrs <- shrink tree_entry_attributes]
+    
 instance Arbitrary Git.Blob where
   arbitrary = fromString `fmap` listOf1 arbitrary
   
@@ -107,8 +137,14 @@ prop_save_and_load_a_blob (blob::Git.Blob) =
   given_a_repository $ \repo -> do
     Just oid <- Git.write repo blob    
     Just blob_saved <- Git.lookup repo oid
-    print $ show blob ++ "<>" ++ show blob_saved
     return $ blob_saved == blob
+    
+prop_save_and_load_a_tree (tree::Git.Tree) =    
+  given_a_repository $ \repo -> do
+    Just oid <- Git.write repo tree
+    Just tree_saved <- Git.lookup repo oid
+    return $ tree_saved == tree    
+    
     
 run title prop = do
   print $ "######### Test: " ++ title
@@ -121,4 +157,5 @@ tests = [ run "open nonexisting repo" prop_opening_nonexistant_repo_fails
         , run "save and load a blob" prop_save_and_load_a_blob
         , run "lookup a non existing commit" prop_lookup_nonexisting_commit
         , run "oid contents stay the same during cpy" prop_oid_cpy
+        , run "save and load a tree" prop_save_and_load_a_tree
         ]

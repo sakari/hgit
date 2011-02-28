@@ -22,6 +22,8 @@ test-suite git_test
   extra-libraries: git2
   default-extensions: 
     ScopedTypeVariables
+    NamedFieldPuns
+    GeneralizedNewtypeDeriving
 
 library
   default-language: Haskell98

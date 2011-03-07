@@ -72,42 +72,40 @@ instance Arbitrary FileMode where
 instance Arbitrary Git.TreeEntry where
   arbitrary = liftM3 Git.TreeEntry arbitrary (fmap fromPath arbitrary) (fmap fromFileMode arbitrary)
   shrink Git.TreeEntry { Git.tree_entry_oid, Git.tree_entry_filepath, Git.tree_entry_attributes } = 
-    shrunk_oid ++ shrunk_path ++ shrunk_attributes
-    where
-      shrunk_oid = [Git.TreeEntry oid tree_entry_filepath tree_entry_attributes | oid <- shrink tree_entry_oid]
-      shrunk_path = [Git.TreeEntry tree_entry_oid path tree_entry_attributes | path <- shrink tree_entry_filepath]
-      shrunk_attributes = [Git.TreeEntry tree_entry_oid tree_entry_filepath attrs | attrs <- shrink tree_entry_attributes]
+    shrink3 Git.TreeEntry tree_entry_oid tree_entry_filepath tree_entry_attributes
     
 instance Arbitrary Git.Blob where
   arbitrary = fromString `fmap` listOf1 arbitrary
   
 instance Arbitrary Git.GitTime where  
   arbitrary = liftM2 Git.GitTime arbitrary arbitrary
+    
+shrink3 c a1 a2 a3 = s1 ++ s2 ++ s3
+  where
+    s1 = [c sa1 a2 a3 | sa1 <- shrink a1 ]
+    s2 = [c a1 sa2 a3 | sa2 <- shrink a2 ]
+    s3 = [c a1 a2 sa3 | sa3 <- shrink a3 ]
   
+    
+anyString = listOf $ choose('\001', '\255')
+    
 instance Arbitrary Git.Signature where  
-  arbitrary = liftM3 Git.Signature arbitrary arbitrary arbitrary
-  
+  arbitrary = liftM3 Git.Signature anyString anyString arbitrary
+  shrink Git.Signature { Git.signature_name, Git.signature_email, Git.signature_time } = 
+    shrink3 Git.Signature signature_name signature_email signature_time 
+    
 instance Arbitrary Git.Commit where
-  arbitrary = do
-    oid <- arbitrary
-    msg <- arbitrary
-    short_msg <- arbitrary
-    author <- arbitrary
-    committer <- arbitrary
-    time <- arbitrary
-    offset <- arbitrary
-    tree <- arbitrary
-    parents <- arbitrary
-    return Git.Commit { Git.commit_id = oid
-                      , Git.commit_message = msg
-                      , Git.commit_short_message = short_msg
-                      , Git.commit_time = time
-                      , Git.commit_author = author
-                      , Git.commit_committer = committer
-                      , Git.commit_time_offset = offset
-                      , Git.commit_tree = tree
-                      , Git.commit_parents = parents
-                      }
+  arbitrary = liftM5 Git.Commit anyString arbitrary arbitrary arbitrary $ return []
+  shrink (Git.Commit a b c d e) = shrink5 Git.Commit a b c d e
+  
+shrink5 c a1 a2 a3 a4 a5 = s1 ++ s2 ++ s3 ++ s4 ++ s5
+  where
+    s1 = [c sa1 a2 a3 a4 a5 | sa1 <- shrink a1 ]
+    s2 = [c a1 sa2 a3 a4 a5 | sa2 <- shrink a2 ]
+    s3 = [c a1 a2 sa3 a4 a5 | sa3 <- shrink a3 ]
+    s4 = [c a1 a2 a3 sa4 a5 | sa4 <- shrink a4 ]
+    s5 = [c a1 a2 a3 a4 sa5 | sa5 <- shrink a5 ]
+
 
 prop_opening_nonexistant_repo_fails (RepoName repo) =
   sandbox $ isNothing `fmap` Git.open repo
@@ -126,10 +124,6 @@ prop_opening_an_initialized_repo_succeeds (RepoName name) =
     Just repo <- Git.initialize name False
     isJust `fmap` Git.open (joinPath [name, ".git"]) 
 
-prop_lookup_nonexisting_commit oid =
-  given_a_repository $ \repo -> do
-    isNothing `fmap` Git.commitLookup repo oid
-        
 prop_oid_cpy oid = sandbox $ do
   (oid ==) `fmap` Git.oidCpy oid
   
@@ -145,7 +139,19 @@ prop_save_and_load_a_tree (tree::Git.Tree) =
     Just tree_saved <- Git.lookup repo oid
     return $ tree_saved == tree    
     
-    
+prop_lookup_nonexisting_commit oid =
+  given_a_repository $ \repo -> do
+    (isNothing::Maybe Git.Commit -> Bool) `fmap` Git.lookup repo oid
+
+prop_save_and_load_a_commit (commit::Git.Commit) (parents::[Git.Commit]) =
+  given_a_repository $ \repo -> do
+    parentOids <- forM parents $ Git.write repo 
+    let originalCommit = commit { Git.commit_parents = map fromJust parentOids }
+    Just oid <- Git.write repo originalCommit
+    Just savedCommit <- Git.lookup repo oid
+    when (originalCommit /= savedCommit) $ print $ "saved: " ++ show savedCommit ++ "<>" ++ show originalCommit
+    return $ originalCommit == savedCommit
+        
 run title prop = do
   print $ "######### Test: " ++ title
   quickCheckResult prop
@@ -158,4 +164,5 @@ tests = [ run "open nonexisting repo" prop_opening_nonexistant_repo_fails
         , run "lookup a non existing commit" prop_lookup_nonexisting_commit
         , run "oid contents stay the same during cpy" prop_oid_cpy
         , run "save and load a tree" prop_save_and_load_a_tree
+        , run "save and load a commit" prop_save_and_load_a_commit
         ]

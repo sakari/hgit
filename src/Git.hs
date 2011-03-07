@@ -12,8 +12,6 @@ module Git (Repository
            , open
            , initialize
            , free
-           , commitLookup
-           , commitWrite
            ) where
 import Data.List(sort)
 import Bindings.Libgit2
@@ -50,44 +48,37 @@ withCSignature Signature { signature_name, signature_email, signature_time } blo
       poke sigPtr $ C'git_signature c'name c'email $ haskell_to_c'git_time signature_time
       block sigPtr
 
-data Commit = Commit { commit_id :: Oid
-                     , commit_message :: String
-                     , commit_short_message :: String
+data Commit = Commit { commit_message :: String
                      , commit_author :: Signature
                      , commit_committer :: Signature
-                     , commit_time :: Int
-                     , commit_time_offset :: Int
-                     , commit_tree :: Oid
+                     , commit_tree :: Tree
                      , commit_parents :: [Oid]
                      }
             deriving (Show, Eq)
               
 fromGitCommit::Ptr C'git_commit -> IO Commit
 fromGitCommit commitPtr = do
-  oid <- c'git_commit_id commitPtr >>= oidCpy . Oid
   msg <- c'git_commit_message commitPtr >>= peekCString
-  short_msg <- c'git_commit_message_short commitPtr >>= peekCString
   author <- c'git_commit_author commitPtr >>= peekSignature
   committer <- c'git_commit_committer commitPtr >>= peekSignature
-  commit_time <-fromEnum `fmap` c'git_commit_time commitPtr
-  time_offset <- fromEnum `fmap` c'git_commit_time_offset commitPtr
-  tree <- commitTreeOid
+  tree <- commitTree
   parents <- parentOids 
-  return $ Commit { commit_id = oid
-                  , commit_message = msg
-                  , commit_short_message = short_msg
+  return $ Commit { commit_message = msg
                   , commit_author = author
                   , commit_committer = committer
-                  , commit_time = commit_time
-                  , commit_time_offset = time_offset
                   , commit_tree = tree
                   , commit_parents = parents
                   }                            
   where
     peekSignature sigPtr = peek sigPtr >>= \(C'git_signature name email when) -> 
       liftM3 Signature (peekCString name) (peekCString email) (return $ c'git_time_to_haskell when)  
-    parentOids = return []
-    commitTreeOid = return $ fromJust $ oidMkStr (take 40 $ repeat 'a')
+    parentOids = do
+      parentCount <- c'git_commit_parentcount commitPtr
+      forM [0 .. parentCount - 1] $ \idx -> do
+        parentPtr <- c'git_commit_parent commitPtr idx
+        oid <- c'git_commit_id parentPtr
+        oidCpy $ Oid oid
+    commitTree = c'git_commit_tree commitPtr >>= fromGitTree
     
 newtype Oid = Oid { oidPtr::Ptr C'git_oid }
 instance Ord Oid where
@@ -109,33 +100,40 @@ instance Ord Tree where
                      
 writeObject optr = do
   r <- c'git_object_write $ castPtr optr
-  oidPtr <- c'git_object_id $ castPtr optr
-  Just `fmap` oidCpy (Oid oidPtr)
+  if (r < 0) then return Nothing
+     else do
+      oidPtr <- c'git_object_id $ castPtr optr
+      Just `fmap` oidCpy (Oid oidPtr)
   
 instance Object Tree where
-  write Repository { repoPtr } Tree { tree_entries } = do
-    Just treePtr <- git_out_param $ (\treeOutPtr -> c'git_tree_new treeOutPtr repoPtr)
-    forM_ tree_entries $ addTreeEntry treePtr
-    writeObject treePtr
-    where    
+  write repo tree =
+    toGitTree repo tree >>= writeObject
+  lookup Repository { repoPtr } Oid { oidPtr } = 
+    git_out_param (\treeOutPtr -> c'git_tree_lookup treeOutPtr repoPtr oidPtr) >>= fmapMaybeInF fromGitTree
+            
+toGitTree::Repository -> Tree -> IO (Ptr C'git_tree)
+toGitTree Repository { repoPtr } Tree { tree_entries } = do
+  Just treePtr <- git_out_param $ (\treeOutPtr -> c'git_tree_new treeOutPtr repoPtr)
+  forM_ tree_entries $ addTreeEntry treePtr
+  return treePtr
+    where
       addTreeEntry treePtr TreeEntry { tree_entry_oid, tree_entry_attributes, tree_entry_filepath} = 
         withCString tree_entry_filepath $ \c'filepath -> do
            r <- c'git_tree_add_entry nullPtr treePtr (oidPtr tree_entry_oid) c'filepath $ toEnum tree_entry_attributes
            when (r < 0) $ error "error adding tree_entry"   
-
-  lookup Repository { repoPtr } Oid { oidPtr } = 
-    git_out_param (\treeOutPtr -> c'git_tree_lookup treeOutPtr repoPtr oidPtr) >>= fmapMaybeInF getTree
+      
+fromGitTree::Ptr C'git_tree -> IO Tree
+fromGitTree = getTree 
+  where
+    getTree treePtr = do
+      c'entries <- c'git_tree_entrycount treePtr
+      fmap Tree $ forM [0 .. c'entries - 1] $ \idx ->
+        c'git_tree_entry_byindex treePtr idx >>= getTreeEntry
+    getTreeEntry treeEntryPtr = liftM3 TreeEntry oid filename attributes
       where
-        getTree treePtr = do
-          c'entries <- c'git_tree_entrycount treePtr
-          fmap Tree $ forM [0 .. c'entries - 1] $ \idx ->
-            c'git_tree_entry_byindex treePtr idx >>= getTreeEntry
-        getTreeEntry treeEntryPtr = liftM3 TreeEntry oid filename attributes
-          where
-            oid = c'git_tree_entry_id treeEntryPtr >>= oidCpy . Oid
-            attributes = fmap fromEnum $ c'git_tree_entry_attributes treeEntryPtr  
-            filename = c'git_tree_entry_name treeEntryPtr >>= peekCString 
-            
+        oid = c'git_tree_entry_id treeEntryPtr >>= oidCpy . Oid
+        attributes = fmap fromEnum $ c'git_tree_entry_attributes treeEntryPtr  
+        filename = c'git_tree_entry_name treeEntryPtr >>= peekCString 
             
 data Blob = Blob { blob::ByteString }
             deriving (Show, Eq)
@@ -193,44 +191,45 @@ class Object o where
 
 instance Object Blob where
   lookup Repository { repoPtr } Oid { oidPtr } = do
-    git_out_param (\blobOut -> c'git_blob_lookup blobOut repoPtr oidPtr) >>= fmapMaybeInF createBlob
+    git_out_param (\blobOutPtr -> c'git_blob_lookup blobOutPtr repoPtr oidPtr) >>= fmapMaybeInF createBlob
       where
         createBlob blobPtr = do
           buffer <- c'git_blob_rawcontent blobPtr
           buffer_size <- c'git_blob_rawsize blobPtr
           Blob `fmap` packCStringLen (buffer, fromEnum buffer_size)
   write Repository { repoPtr } Blob { blob } = do
-    Just c'blob <- git_out_param $ (\blobParam -> c'git_blob_new blobParam repoPtr)
-    useAsCStringLen blob $ \(blob_array, blob_array_size) -> c'git_blob_set_rawcontent c'blob (castPtr blob_array) $ toEnum blob_array_size
-    r <- c'git_object_write $ castPtr c'blob
-    oidPtr <- c'git_object_id $ castPtr c'blob                  
-    Just `fmap` oidCpy (Oid oidPtr)
+    Just blobPtr <- git_out_param $ (\blobOutPtr -> c'git_blob_new blobOutPtr repoPtr)
+    useAsCStringLen blob $ \(blob_array, blob_array_size) -> 
+      c'git_blob_set_rawcontent blobPtr (castPtr blob_array) $ toEnum blob_array_size
+    writeObject blobPtr
 
-commitLookup::Repository -> Oid -> IO (Maybe Commit)
-commitLookup Repository { repoPtr } Oid { oidPtr } = 
-  git_out_param (\commitPtr -> c'git_commit_lookup commitPtr repoPtr oidPtr) >>= fmapMaybeInF fromGitCommit
-
+instance Object Commit where
+  lookup Repository { repoPtr } Oid { oidPtr } = 
+    git_out_param (\commitPtr -> c'git_commit_lookup commitPtr repoPtr oidPtr) >>= fmapMaybeInF fromGitCommit
+    
+  write  repo@Repository { repoPtr } Commit { commit_message
+                                            , commit_author
+                                            , commit_committer
+                                            , commit_parents
+                                            , commit_tree } = do
+    Just commitPtr <- git_out_param (\commitOutPtr -> c'git_commit_new commitOutPtr repoPtr)
+    commit_message `withCString` c'git_commit_set_message commitPtr 
+    commit_author `withCSignature` c'git_commit_set_author commitPtr
+    commit_committer `withCSignature` c'git_commit_set_committer commitPtr
+    forM_ commit_parents $ setParent commitPtr 
+    treePtr <- toGitTree repo commit_tree
+    c'git_object_write $ castPtr treePtr
+    c'git_commit_set_tree commitPtr treePtr
+    writeObject commitPtr
+    where
+      setParent commitPtr Oid { oidPtr } = do
+        Just parentPtr <- git_out_param (\parentOutPtr -> c'git_commit_lookup parentOutPtr repoPtr oidPtr)
+        c'git_commit_add_parent commitPtr parentPtr
+      
 fmapMaybeInF::(Monad m, Functor m) => (a -> m b) -> Maybe a -> m (Maybe b)
 fmapMaybeInF g Nothing = return Nothing
 fmapMaybeInF g (Just argument) = Just `fmap` g argument
            
-  
-commitWrite::Repository -> Commit -> IO (Maybe Oid)
-commitWrite Repository { repoPtr } Commit { commit_message
-                                          , commit_author
-                                          , commit_committer
-                                          , commit_time
-                                          , commit_time_offset
-                                          , commit_parents
-                                          , commit_tree 
-                                          , commit_id } = do
-  Just commitPtr <- git_out_param (\commitPtr -> c'git_commit_new commitPtr repoPtr)
-  commit_message `withCString` c'git_commit_set_message commitPtr 
-  commit_author `withCSignature` c'git_commit_set_author commitPtr
-  commit_committer `withCSignature` c'git_commit_set_committer commitPtr
-  c'git_object_write $ castPtr commitPtr
-  savedOidPtr <- c'git_commit_id commitPtr
-  Just `fmap` oidCpy (Oid savedOidPtr)
 
 git_out_param::(Ptr (Ptr a) -> IO CInt) -> IO (Maybe (Ptr a))
 git_out_param git_call  = alloca $ \outParam -> do

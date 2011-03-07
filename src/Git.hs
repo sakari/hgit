@@ -196,7 +196,7 @@ instance Object Blob where
         createBlob blobPtr = do
           buffer <- c'git_blob_rawcontent blobPtr
           buffer_size <- c'git_blob_rawsize blobPtr
-          Blob `fmap` packCStringLen (buffer, fromEnum buffer_size)
+          Blob `fmap` packCStringLen (castPtr buffer, fromEnum buffer_size)
   write Repository { repoPtr } Blob { blob } = do
     Just blobPtr <- git_out_param $ (\blobOutPtr -> c'git_blob_new blobOutPtr repoPtr)
     useAsCStringLen blob $ \(blob_array, blob_array_size) -> 

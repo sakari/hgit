@@ -85,8 +85,7 @@ shrink3 c a1 a2 a3 = s1 ++ s2 ++ s3
     s1 = [c sa1 a2 a3 | sa1 <- shrink a1 ]
     s2 = [c a1 sa2 a3 | sa2 <- shrink a2 ]
     s3 = [c a1 a2 sa3 | sa3 <- shrink a3 ]
-  
-    
+      
 anyString = listOf $ choose('\001', '\255')
     
 instance Arbitrary Git.Signature where  
@@ -105,7 +104,6 @@ shrink5 c a1 a2 a3 a4 a5 = s1 ++ s2 ++ s3 ++ s4 ++ s5
     s3 = [c a1 a2 sa3 a4 a5 | sa3 <- shrink a3 ]
     s4 = [c a1 a2 a3 sa4 a5 | sa4 <- shrink a4 ]
     s5 = [c a1 a2 a3 a4 sa5 | sa5 <- shrink a5 ]
-
 
 prop_opening_nonexistant_repo_fails (RepoName repo) =
   sandbox $ isNothing `fmap` Git.open repo
@@ -149,7 +147,6 @@ prop_save_and_load_a_commit (commit::Git.Commit) (parents::[Git.Commit]) =
     let originalCommit = commit { Git.commit_parents = map fromJust parentOids }
     Just oid <- Git.write repo originalCommit
     Just savedCommit <- Git.lookup repo oid
-    when (originalCommit /= savedCommit) $ print $ "saved: " ++ show savedCommit ++ "<>" ++ show originalCommit
     return $ originalCommit == savedCommit
         
 run title prop = do

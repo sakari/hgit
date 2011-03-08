@@ -18,7 +18,8 @@ test-suite git_test
     filepath >= 1.2.0.0,
     QuickCheck >= 2.4.0.0,
     directory,
-    unix
+    unix,
+    containers
   extra-libraries: git2
   default-extensions: 
     ScopedTypeVariables

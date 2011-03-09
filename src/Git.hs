@@ -74,11 +74,13 @@ fromGitCommit commitPtr = do
       liftM3 Signature (peekCString name) (peekCString email) (return $ c'git_time_to_haskell when)  
     parentOids = do
       parentCount <- c'git_commit_parentcount commitPtr
-      forM [0 .. parentCount - 1] $ \idx -> do
-        parentPtr <- c'git_commit_parent commitPtr idx
-        oid <- c'git_commit_id parentPtr
-        oidCpy $ Oid oid
-    commitTree = c'git_commit_tree commitPtr >>= fromGitTree
+      if parentCount == 0 then return []
+        else do
+        forM [0 .. parentCount - 1] $ \idx -> do
+          Just parentPtr <- git_out_param $ \parentPtrPtr -> c'git_commit_parent parentPtrPtr commitPtr idx
+          oid <- c'git_commit_id parentPtr
+          oidCpy $ Oid oid
+    commitTree = git_out_param (\treePtrPtr -> c'git_commit_tree treePtrPtr commitPtr) >>= fromGitTree . fromJust
     
 newtype Oid = Oid { oidPtr::Ptr C'git_oid }
 instance Ord Oid where
@@ -127,7 +129,7 @@ fromGitTree = getTree
   where
     getTree treePtr = do
       c'entries <- c'git_tree_entrycount treePtr
-      fmap Tree $ forM [0 .. c'entries - 1] $ \idx ->
+      fmap Tree $ forM [0 .. (fromIntegral c'entries) - 1] $ \idx ->
         c'git_tree_entry_byindex treePtr idx >>= getTreeEntry
     getTreeEntry treeEntryPtr = liftM3 TreeEntry oid filename attributes
       where
@@ -237,7 +239,7 @@ git_out_param git_call  = alloca $ \outParam -> do
   if (r < 0) then return Nothing
     else Just `fmap` peek outParam
 
-c'bool::Bool -> CInt
+c'bool::Bool -> CUInt
 c'bool True = 1
 c'bool False = 0
            

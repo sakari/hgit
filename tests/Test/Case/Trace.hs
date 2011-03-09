@@ -5,36 +5,55 @@ import Control.Monad
 import Test.Util
 import Test.Arbitrary
 import qualified Data.Map as Map
+import Data.Maybe
 import Test.QuickCheck
 
-data GitAction = GitWriteBlob Git.Blob
-               | GitLookupBlob Git.Oid
+data Action = WriteBlob Git.Blob
+            | LookupBlob Git.Oid
+            | LookupExistingBlob Int
                  deriving (Show, Eq)
                           
-data GitTrace = GitTraceBlob { gitTraceBlob::Maybe Git.Blob}
-              | GitTraceOid { gitTraceOid::Maybe Git.Oid}
-                deriving (Show, Eq)
+data Trace = TraceLookup { lookup_oid:: Git.Oid
+                   , found_blob::Maybe Git.Blob }
+           | TraceWrite { saved_blob::Git.Blob 
+                      , got_oid::Maybe Git.Oid }
+           | TraceNop
+           deriving (Show, Eq)
                 
-instance Arbitrary GitAction where
-  arbitrary = oneof [fmap GitWriteBlob arbitrary, fmap GitLookupBlob arbitrary]
-  shrink (GitWriteBlob blob) = fmap GitWriteBlob $ shrink blob
-  shrink (GitLookupBlob oid) = fmap GitLookupBlob $ shrink oid
+instance Arbitrary Action where
+  arbitrary = oneof [fmap WriteBlob arbitrary
+                    , fmap LookupBlob arbitrary
+                    , fmap LookupExistingBlob arbitrary]
+  shrink (WriteBlob blob) = fmap WriteBlob $ shrink blob
+  shrink (LookupBlob oid) = fmap LookupBlob $ shrink oid
+  shrink (LookupExistingBlob idx) = fmap LookupExistingBlob $ shrink idx
 
-executeGit::[GitAction] -> [GitTrace]
-executeGit actions = given_a_repository $ forM actions . step
+execute::[Action] -> [Trace]
+execute actions = reverse $ given_a_repository $ \repo -> foldM (step repo) [] actions
   where
-    step repo (GitWriteBlob blob) = fmap GitTraceOid $ Git.write repo blob
-    step repo (GitLookupBlob oid) = fmap GitTraceBlob $ Git.lookup repo oid
-  
-verifyTrace::[GitAction] -> [GitTrace] -> Bool 
-verifyTrace actions trace = fst $ foldl step (True, Map.empty) (zip actions trace)
+    step repo result (WriteBlob blob) = ((:result) . TraceWrite blob) `fmap` Git.write repo blob
+    step repo result (LookupBlob oid) = ((:result) . TraceLookup oid) `fmap`  Git.lookup repo oid
+    step repo result (LookupExistingBlob idx) = 
+      case drop idx writtenBlobOids of
+        [] -> return (TraceNop:result)
+        oid:_ -> do
+          print $ ">>> " ++ show oid
+          ((:result) . TraceLookup oid) `fmap`  Git.lookup repo oid
+      where 
+        writtenBlobOids = [fromJust got_oid | TraceWrite {saved_blob, got_oid} <- result ]
+    
+verify::[Trace] -> Bool 
+verify trace = fst $ foldl step (True, Map.empty) trace
   where
-    step (False, st) _ = (False, st)
-    step (_, state) (GitWriteBlob blob, GitTraceOid (Just oid)) = (True, Map.insert oid blob state)
-    step (_, state) (GitLookupBlob oid, GitTraceBlob blob) = (Map.lookup oid state == blob, state)
-        
+    step (False, state) _ = (False, state)
+    step (True, state) TraceNop = (True, state)
+    step (True, state) TraceWrite { saved_blob, got_oid } = 
+      (True, Map.insert (fromJust got_oid) saved_blob state)
+    step (True, state) TraceLookup { lookup_oid, found_blob} = 
+      (Map.lookup lookup_oid state == found_blob, state)
+                                                             
 prop_blob_writes_and_lookups_produce_a_valid_trace actions = 
-  verifyTrace actions $ executeGit actions
+  verify $ execute actions
 
 tests = [ run "blob write and lookup trace" prop_blob_writes_and_lookups_produce_a_valid_trace ]
 

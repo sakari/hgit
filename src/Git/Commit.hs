@@ -4,6 +4,7 @@ import Foreign.Concurrent
 import Foreign.Ptr
 import Foreign.Marshal.Alloc
 import Foreign.Marshal.Array
+import Foreign.Marshal.Utils
 import Foreign.Storable
 import Foreign.C.String
 
@@ -11,6 +12,7 @@ import Git.Result
 import Git.Repository
 import Git.Oid
 import Git.Tree
+import Git.Object
 
 import Bindings.Libgit2
 
@@ -19,17 +21,9 @@ data Commit = Commit { commit_ptr::ForeignPtr C'git_commit
                      }
 
 lookup::Repository -> Oid -> Result Commit
-lookup repo oid = do
-  alloca $ \ptr -> do
-    withForeignPtr (repository_ptr repo) $ \repo_ptr -> do
-      withForeignPtr (oid_ptr oid) $ \oid_ptr -> do
-        c'git_commit_lookup ptr repo_ptr oid_ptr `handle_git_return` wrap ptr repo_ptr oid_ptr
+lookup repo oid = lookup_wrapped_object repo oid wrap c'GIT_OBJ_COMMIT
   where
-    wrap ptr repo_ptr oid_ptr = do
-      wrapped_commit_ptr <- do 
-        p <- peek ptr
-        newForeignPtr p $ c'git_commit_close p
-      return $ Commit { commit_ptr = wrapped_commit_ptr, commit_repo_ptr = repository_ptr repo }
+    wrap fptr = Commit { commit_ptr = fptr, commit_repo_ptr = repository_ptr repo}
   
 type Ref = String
 type Message = String
@@ -37,8 +31,20 @@ type OidT a = Oid
 type Author = Signature
 type Committer = Signature
 
-data Signature = Signature { signature_ptr::ForeignPtr C'git_signature }
-  
+data Time = Time { time_epoch::Integer, time_offset::Int }
+data Signature = Signature { signature_author::String, signature_email::String, signature_time::Time }
+
+with_signature::Signature -> (C'git_signature -> Result a) -> Result a
+with_signature sig action = do 
+  withCString (signature_author sig) $ \c'author -> do 
+    withCString (signature_email sig) $ \c'email ->  do
+      let c'time = C'git_time (fromIntegral $ time_epoch $ signature_time sig) (fromIntegral $ time_offset $ signature_time sig)
+          c'sig = C'git_signature c'author c'email c'time
+      action c'sig
+      
+with_signature_ptr::Signature -> (Ptr C'git_signature -> Result a) -> Result a
+with_signature_ptr sig action = with_signature sig $ \c'sig -> with c'sig action
+      
 withMaybeCString::Maybe String -> (CString -> IO a) -> IO a
 withMaybeCString string action = maybe (action nullPtr) (flip withCString action) string
 
@@ -54,11 +60,11 @@ create repo ref author committer message tree parents = do
   withForeignPtr oid_fptr $ \result_oid_ptr -> do
     withForeignPtr (repository_ptr repo) $ \repo_ptr -> do
       withMaybeCString ref $ \ref_ptr -> do
-        withForeignPtr (signature_ptr author) $ \auth_ptr -> do
-          withForeignPtr (signature_ptr committer) $ \ committer_ptr -> do
+        with_signature_ptr author $ \c'author_ptr -> do
+          with_signature_ptr committer $ \ c'committer_ptr -> do
             withCString message $ \message_ptr -> do
               withForeignPtr (oid_ptr tree) $ \tree_ptr -> do
                 withForeignPtrs (map oid_ptr parents) $ \parent_oid_ptrs -> do
                   parent_oids <- mapM peek parent_oid_ptrs
                   withArray parent_oids $ \parent_oid_array -> do
-                    c'git_commit_create result_oid_ptr repo_ptr ref_ptr auth_ptr committer_ptr message_ptr tree_ptr (fromIntegral $ length parents) parent_oid_array `handle_git_return` (return $ Oid oid_fptr)
+                    c'git_commit_create result_oid_ptr repo_ptr ref_ptr c'author_ptr c'committer_ptr message_ptr tree_ptr (fromIntegral $ length parents) parent_oid_array `handle_git_return` (return $ Oid oid_fptr)

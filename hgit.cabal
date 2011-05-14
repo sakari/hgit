@@ -7,24 +7,24 @@ Maintainer:          sakariij@gmail.com
 Build-Type:          Simple
 Cabal-Version:       >=1.10
 
-test-suite git_test
-  main-is: Main.hs
-  default-language: Haskell98
-  type: exitcode-stdio-1.0
-  hs-source-dirs: tests
-  build-depends:
-    base >= 4,
-    hgit,
-    filepath >= 1.2.0.0,
-    QuickCheck >= 2.4.0.0,
-    directory,
-    unix,
-    containers
-  extra-libraries: git2
-  default-extensions: 
-    ScopedTypeVariables
-    NamedFieldPuns
-    GeneralizedNewtypeDeriving
+-- test-suite git_test
+--   main-is: Main.hs
+--   default-language: Haskell98
+--   type: exitcode-stdio-1.0
+--   hs-source-dirs: tests
+--   build-depends:
+--     base >= 4,
+--     hgit,
+--     filepath >= 1.2.0.0,
+--     QuickCheck >= 2.4.0.0,
+--     directory,
+--     unix,
+--     containers
+--   extra-libraries: git2
+--   default-extensions: 
+--     ScopedTypeVariables
+--     NamedFieldPuns
+--     GeneralizedNewtypeDeriving
 
 library
   default-language: Haskell98
@@ -34,6 +34,8 @@ library
     hlibgit2,
     bytestring
   exposed-modules:
-    Git
+    Git.Commit,
+    Git.Repository,
+    Git.Oid
   default-extensions: 
     NamedFieldPuns

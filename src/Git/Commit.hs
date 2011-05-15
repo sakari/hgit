@@ -1,4 +1,4 @@
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving, NamedFieldPuns #-}
 
 module Git.Commit where
 import Foreign.ForeignPtr hiding (newForeignPtr)
@@ -10,6 +10,7 @@ import Foreign.Marshal.Utils
 import Foreign.Storable
 import Foreign.C.String
 
+import Control.Monad
 import Data.Word
 
 import Git.Result
@@ -17,7 +18,7 @@ import Git.Repository
 import Git.Oid
 import Git.Tree
 import Git.Object
-
+import System.IO.Unsafe
 import Bindings.Libgit2
 
 data Commit = Commit { commit_ptr::ForeignPtr C'git_commit 
@@ -50,10 +51,10 @@ instance Bounded Epoch where
   maxBound = Epoch (maxBound::Int)
     
 data Time = Time { time_epoch::Epoch, time_offset::TimeOffset }
-          deriving Show
+          deriving (Show, Eq)
                    
 data Signature = Signature { signature_author::String, signature_email::String, signature_time::Time }
-               deriving Show
+               deriving (Show, Eq)
 
 with_signature::Signature -> (C'git_signature -> IO a) -> IO a
 with_signature sig action = do 
@@ -88,3 +89,36 @@ create repo ref author committer message tree parents = do
                 withForeignPtrs (map oid_ptr parents) $ \parent_oid_ptrs -> do
                   withArray parent_oid_ptrs $ \parent_oid_array -> do
                     c'git_commit_create result_oid_ptr repo_ptr ref_ptr c'author_ptr c'committer_ptr message_ptr tree_ptr (fromIntegral $ length parents) parent_oid_array `wrap_git_result` (return $ Oid oid_fptr)
+
+fromCTime::C'git_time -> Time
+fromCTime (C'git_time stamp offset) = Time (fromIntegral $ fromEnum stamp) (fromIntegral offset)
+
+signature::(Ptr C'git_commit -> IO (Ptr C'git_signature)) -> Commit -> Signature
+signature accessor Commit { commit_ptr } = unsafePerformIO $ withForeignPtr commit_ptr $ \ptr -> do
+  (C'git_signature name email time) <- accessor ptr >>= peek
+  liftM3 Signature (peekCString name) (peekCString email) (return $ fromCTime time)
+
+committer::Commit -> Signature
+committer = signature c'git_commit_committer 
+
+author::Commit -> Signature
+author = signature c'git_commit_author
+
+tree::Commit -> Oid
+tree Commit { commit_ptr } = unsafePerformIO $ do 
+  withForeignPtr commit_ptr $ \ptr -> c'git_commit_tree_oid ptr >>= fromOidPtr
+
+fromOidPtr::Ptr C'git_oid -> IO Oid
+fromOidPtr oidPtr = do
+    fptr <- mallocForeignPtr
+    withForeignPtr fptr $ \ptr -> peek oidPtr >>= poke ptr
+    return $ Oid fptr
+
+parents::Commit -> [Oid]
+parents Commit { commit_ptr } = unsafePerformIO $ do
+  withForeignPtr commit_ptr $ \ptr -> do
+    parentCount <- c'git_commit_parentcount ptr
+    if parentCount <= 0 then return []
+      else mapM (go ptr) [0 .. parentCount - 1] 
+  where
+    go cptr index = c'git_commit_parent_oid cptr index >>= fromOidPtr

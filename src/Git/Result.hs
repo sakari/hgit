@@ -3,7 +3,8 @@ import Foreign.C.Types
 type Result a = IO (Either ErrorCode a)
 
 newtype ErrorCode = ErrorCode Int
-
+                    deriving Show
+                             
 handle_git_return::IO CInt -> IO a -> Result a
 handle_git_return action wrapper = do
   return_value <- action

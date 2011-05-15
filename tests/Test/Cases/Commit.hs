@@ -14,5 +14,5 @@ instance Arbitrary Oid.Oid where
 prop_lookup_non_existing_commit oid = 
   with_repo $ \repo -> do
     fails $ Commit.lookup repo oid
-
+    
 tests = testGroup "Test.Cases.Commit" [ testProperty "lookup_non_existing_commit" prop_lookup_non_existing_commit]

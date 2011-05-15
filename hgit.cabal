@@ -19,7 +19,9 @@ test-suite git_test
     QuickCheck >= 2.4.0.0,
     test-framework,
     test-framework-quickcheck2,
-    hlibgit2
+    hlibgit2,
+    directory,
+    temporary
 
 library
   default-language: Haskell98

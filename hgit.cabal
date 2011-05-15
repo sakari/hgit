@@ -21,7 +21,8 @@ test-suite git_test
     test-framework-quickcheck2,
     hlibgit2,
     directory,
-    temporary
+    temporary,
+    containers
 
 library
   default-language: Haskell98
@@ -29,7 +30,8 @@ library
   build-depends:
     hlibgit2,
     bytestring,
-    base
+    base,
+    containers
   exposed-modules:
     Git.Commit,
     Git.Repository,

@@ -1,6 +1,13 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving, NamedFieldPuns #-}
 
-module Git.Commit where
+module Git.Commit (Commit, Time(..), TimeOffset(..), Signature(..), Epoch(..)
+                  , lookup
+                  , create
+                  , tree
+                  , parents
+                  , author
+                  , committer
+                  ) where
 import Foreign.ForeignPtr hiding (newForeignPtr)
 import Foreign.Concurrent
 import Foreign.Ptr
@@ -16,10 +23,11 @@ import Data.Word
 import Git.Result
 import Git.Repository
 import Git.Oid
-import Git.Tree
+import Git.Tree hiding (lookup)
 import Git.Object
 import System.IO.Unsafe
 import Bindings.Libgit2
+import Prelude hiding (lookup)
 
 data Commit = Commit { commit_ptr::ForeignPtr C'git_commit 
                      , commit_repo_ptr::ForeignPtr C'git_repository

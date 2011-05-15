@@ -1,4 +1,4 @@
-module Git.Tree where
+module Git.Tree (Tree, lookup, write) where
 import Bindings.Libgit2
 import Foreign.ForeignPtr
 import Foreign.Ptr
@@ -7,6 +7,7 @@ import Git.Repository
 import Git.Oid
 import Git.Result
 import qualified Git.TreeBuilder as Builder
+import Prelude hiding (lookup)
 
 data Tree = Tree { tree_ptr::ForeignPtr C'git_tree }
 

@@ -19,5 +19,5 @@ prop_lookup_existing_commit author committer treeOid parentOids =
     return True
     
 tests = testGroup "Test.Cases.Commit" [ testProperty "lookup non existing commit" prop_lookup_non_existing_commit
-                                      -- , testProperty "lookup an existing commit" prop_lookup_existing_commit
+                                      , testProperty "lookup an existing commit" prop_lookup_existing_commit
                                       ]

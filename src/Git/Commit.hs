@@ -69,6 +69,5 @@ create repo ref author committer message tree parents = do
             withCString message $ \message_ptr -> do
               withForeignPtr (oid_ptr tree) $ \tree_ptr -> do
                 withForeignPtrs (map oid_ptr parents) $ \parent_oid_ptrs -> do
-                  parent_oids <- mapM peek parent_oid_ptrs
-                  withArray parent_oids $ \parent_oid_array -> do
+                  withArray parent_oid_ptrs $ \parent_oid_array -> do
                     c'git_commit_create result_oid_ptr repo_ptr ref_ptr c'author_ptr c'committer_ptr message_ptr tree_ptr (fromIntegral $ length parents) parent_oid_array `handle_git_return` (return $ Oid oid_fptr)

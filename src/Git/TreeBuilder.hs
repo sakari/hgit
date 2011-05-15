@@ -23,17 +23,16 @@ create = alloca $ \ptr -> c'git_treebuilder_create ptr nullPtr `wrap_git_result`
     go ptr = fmap TreeBuilder $ newForeignPtr ptr $ c'git_treebuilder_free ptr
 
 insert::TreeBuilder -> FilePath -> Oid -> IO ()
-insert TreeBuilder { treeBuilder } path Oid { oid_ptr } = withForeignPtr treeBuilder $ \c'builder ->  
+insert TreeBuilder { treeBuilder } path oid = withForeignPtr treeBuilder $ \c'builder ->  
   withCString path $ \c'path -> do
-    withForeignPtr oid_ptr $ \c'oid -> do
+    withCOid oid $ \c'oid -> do
       c'git_treebuilder_insert nullPtr c'builder c'path c'oid 0 `wrap_git_result` return ()
 
 write::Repository -> TreeBuilder -> IO Oid 
 write Repository { repository_ptr } TreeBuilder { treeBuilder } = do
   withForeignPtr repository_ptr $ \c'repository ->
     withForeignPtr treeBuilder $ \c'builder -> do
-      foidPtr <- mallocForeignPtr
-      withForeignPtr foidPtr $ \oidPtr ->
-        c'git_treebuilder_write oidPtr c'repository c'builder `wrap_git_result` return (Oid foidPtr)
+      alloca $ \oidPtr ->
+        c'git_treebuilder_write oidPtr c'repository c'builder `wrap_git_result` fromCOid oidPtr
     
 

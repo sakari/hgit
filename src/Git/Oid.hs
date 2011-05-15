@@ -1,6 +1,10 @@
-module Git.Oid where
+module Git.Oid (Oid, fmt, mkstr, withCOid, fromCOid, withCOids) where
 import Bindings.Libgit2
 import Foreign.ForeignPtr
+import Foreign.Ptr
+import Foreign.Marshal.Alloc
+import Foreign.Storable
+
 import System.IO.Unsafe
 import Foreign.C.String
 
@@ -26,3 +30,19 @@ mkstr string = unsafePerformIO $ do
     withCString string $ \c'string ->
     c'git_oid_mkstr ptr c'string
   return $ Oid fptr 
+
+withCOid::Oid -> (Ptr C'git_oid -> IO a) -> IO a
+withCOid (Oid oid_ptr) c = withForeignPtr oid_ptr c 
+
+withCOids::[Oid] -> ([Ptr C'git_oid] -> IO a) -> IO a
+withCOids oids f = go oids [] 
+  where
+    go [] cs = f $ reverse cs
+    go (o:os) cs = withCOid o $ \c'oid -> go os (c'oid:cs)
+
+fromCOid::Ptr C'git_oid -> IO Oid
+fromCOid c'oid = do
+  fptr <- mallocForeignPtr
+  withForeignPtr fptr $ \ptr -> peek c'oid >>= poke ptr
+  return $ Oid fptr
+  

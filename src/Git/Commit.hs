@@ -77,18 +77,17 @@ withForeignPtrs fptrs action = go fptrs []
     go (a:as) fptrs = withForeignPtr a $ \fptr -> go as (fptr:fptrs) 
 
 create::Repository -> Maybe Ref -> Author -> Committer -> Message -> OidT Tree -> [OidT Commit] -> IO (OidT Commit) 
-create repo ref author committer message tree parents = do
-  oid_fptr <- mallocForeignPtr
-  withForeignPtr oid_fptr $ \result_oid_ptr -> do
+create repo ref author committer message tree parents = do  
+  alloca $ \result_oid_ptr -> do
     withForeignPtr (repository_ptr repo) $ \repo_ptr -> do
       withMaybeCString ref $ \ref_ptr -> do
         with_signature_ptr author $ \c'author_ptr -> do
           with_signature_ptr committer $ \ c'committer_ptr -> do
             withCString message $ \message_ptr -> do
-              withForeignPtr (oid_ptr tree) $ \tree_ptr -> do
-                withForeignPtrs (map oid_ptr parents) $ \parent_oid_ptrs -> do
+              withCOid tree $ \tree_ptr -> do
+                withCOids parents $ \parent_oid_ptrs -> do
                   withArray parent_oid_ptrs $ \parent_oid_array -> do
-                    c'git_commit_create result_oid_ptr repo_ptr ref_ptr c'author_ptr c'committer_ptr message_ptr tree_ptr (fromIntegral $ length parents) parent_oid_array `wrap_git_result` (return $ Oid oid_fptr)
+                    c'git_commit_create result_oid_ptr repo_ptr ref_ptr c'author_ptr c'committer_ptr message_ptr tree_ptr (fromIntegral $ length parents) parent_oid_array `wrap_git_result` fromCOid result_oid_ptr
 
 fromCTime::C'git_time -> Time
 fromCTime (C'git_time stamp offset) = Time (fromIntegral $ fromEnum stamp) (fromIntegral offset)
@@ -106,13 +105,7 @@ author = signature c'git_commit_author
 
 tree::Commit -> Oid
 tree Commit { commit_ptr } = unsafePerformIO $ do 
-  withForeignPtr commit_ptr $ \ptr -> c'git_commit_tree_oid ptr >>= fromOidPtr
-
-fromOidPtr::Ptr C'git_oid -> IO Oid
-fromOidPtr oidPtr = do
-    fptr <- mallocForeignPtr
-    withForeignPtr fptr $ \ptr -> peek oidPtr >>= poke ptr
-    return $ Oid fptr
+  withForeignPtr commit_ptr $ \ptr -> c'git_commit_tree_oid ptr >>= fromCOid
 
 parents::Commit -> [Oid]
 parents Commit { commit_ptr } = unsafePerformIO $ do
@@ -121,4 +114,4 @@ parents Commit { commit_ptr } = unsafePerformIO $ do
     if parentCount <= 0 then return []
       else mapM (go ptr) [0 .. parentCount - 1] 
   where
-    go cptr index = c'git_commit_parent_oid cptr index >>= fromOidPtr
+    go cptr index = c'git_commit_parent_oid cptr index >>= fromCOid

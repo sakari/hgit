@@ -1,7 +1,12 @@
-module Git.Error where
-import Bindings.Libgit2
-import Foreign.C.Types
-import Foreign.C.String
+{-# LANGUAGE DeriveDataTypeable #-}
 
-lastError::IO String
-lastError = c'git_lasterror >>= peekCString
+module Git.Error where
+import Control.Exception
+import Data.Typeable
+
+data Error = Error { error_code::Int
+                   , error_explanation::String
+                   }
+           deriving (Show, Typeable)
+
+instance Exception Error

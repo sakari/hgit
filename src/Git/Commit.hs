@@ -24,7 +24,7 @@ data Commit = Commit { commit_ptr::ForeignPtr C'git_commit
                      , commit_repo_ptr::ForeignPtr C'git_repository
                      }
 
-lookup::Repository -> Oid -> Result Commit
+lookup::Repository -> Oid -> IO Commit
 lookup repo oid = lookup_wrapped_object repo oid wrap c'GIT_OBJ_COMMIT
   where
     wrap fptr = Commit { commit_ptr = fptr, commit_repo_ptr = repository_ptr repo}
@@ -55,7 +55,7 @@ data Time = Time { time_epoch::Epoch, time_offset::TimeOffset }
 data Signature = Signature { signature_author::String, signature_email::String, signature_time::Time }
                deriving Show
 
-with_signature::Signature -> (C'git_signature -> Result a) -> Result a
+with_signature::Signature -> (C'git_signature -> IO a) -> IO a
 with_signature sig action = do 
   withCString (signature_author sig) $ \c'author -> do 
     withCString (signature_email sig) $ \c'email ->  do
@@ -63,7 +63,7 @@ with_signature sig action = do
           c'sig = C'git_signature c'author c'email c'time
       action c'sig
       
-with_signature_ptr::Signature -> (Ptr C'git_signature -> Result a) -> Result a
+with_signature_ptr::Signature -> (Ptr C'git_signature -> IO a) -> IO a
 with_signature_ptr sig action = with_signature sig $ \c'sig -> with c'sig action
       
 withMaybeCString::Maybe String -> (CString -> IO a) -> IO a
@@ -75,7 +75,7 @@ withForeignPtrs fptrs action = go fptrs []
     go [] fptrs = action $ reverse fptrs
     go (a:as) fptrs = withForeignPtr a $ \fptr -> go as (fptr:fptrs) 
 
-create::Repository -> Maybe Ref -> Author -> Committer -> Message -> OidT Tree -> [OidT Commit] -> Result (OidT Commit) 
+create::Repository -> Maybe Ref -> Author -> Committer -> Message -> OidT Tree -> [OidT Commit] -> IO (OidT Commit) 
 create repo ref author committer message tree parents = do
   oid_fptr <- mallocForeignPtr
   withForeignPtr oid_fptr $ \result_oid_ptr -> do
@@ -87,4 +87,4 @@ create repo ref author committer message tree parents = do
               withForeignPtr (oid_ptr tree) $ \tree_ptr -> do
                 withForeignPtrs (map oid_ptr parents) $ \parent_oid_ptrs -> do
                   withArray parent_oid_ptrs $ \parent_oid_array -> do
-                    c'git_commit_create result_oid_ptr repo_ptr ref_ptr c'author_ptr c'committer_ptr message_ptr tree_ptr (fromIntegral $ length parents) parent_oid_array `handle_git_return` (return $ Oid oid_fptr)
+                    c'git_commit_create result_oid_ptr repo_ptr ref_ptr c'author_ptr c'committer_ptr message_ptr tree_ptr (fromIntegral $ length parents) parent_oid_array `wrap_git_result` (return $ Oid oid_fptr)

@@ -1,13 +1,19 @@
-module Git.Result where
-import Foreign.C.Types
-type Result a = IO (Either ErrorCode a)
+module Git.Result (wrap_git_result) where
 
-newtype ErrorCode = ErrorCode Int
-                    deriving Show
-                             
-handle_git_return::IO CInt -> IO a -> Result a
-handle_git_return action wrapper = do
+import Git.Error
+import Bindings.Libgit2
+import Foreign.C.Types
+import Foreign.C.String
+import Control.Exception
+
+lastError::IO String
+lastError = c'git_lasterror >>= peekCString
+
+wrap_git_result::IO CInt -> IO a -> IO a
+wrap_git_result action wrapper = do
   return_value <- action
-  if return_value /= 0 then return $ Left $ ErrorCode $ fromIntegral return_value
-    else fmap Right wrapper
+  if return_value == 0 then wrapper 
+    else do
+      explanation <- lastError
+      throwIO $ fromIntegral return_value `Error` explanation 
 

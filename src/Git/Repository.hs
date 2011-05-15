@@ -13,16 +13,16 @@ import Prelude hiding (init)
 
 data Repository = Repository { repository_ptr::ForeignPtr C'git_repository }
 
-newRepository::FilePath -> (Ptr (Ptr C'git_repository) -> CString -> IO CInt) -> Result Repository  
+newRepository::FilePath -> (Ptr (Ptr C'git_repository) -> CString -> IO CInt) -> IO Repository  
 newRepository path constructor = alloca $ \ptr_ptr -> withCString path $ \c'path ->
-  constructor ptr_ptr c'path `handle_git_return` wrap ptr_ptr
+  constructor ptr_ptr c'path `wrap_git_result` wrap ptr_ptr
     where
       wrap ptr_ptr = do
         repo_ptr <- peek ptr_ptr
         liftM Repository $ repo_ptr `newForeignPtr` c'git_repository_free repo_ptr
 
-init::FilePath -> Result Repository
+init::FilePath -> IO Repository
 init path = newRepository path $ \pptr c'path -> c'git_repository_init pptr c'path 0
         
-open::FilePath -> Result Repository
+open::FilePath -> IO Repository
 open path = newRepository path c'git_repository_open

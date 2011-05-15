@@ -15,13 +15,21 @@ tests = testGroup "Test.Cases.Tree"
            with_repo $ \repo -> do
              fails $ Tree.lookup repo oid
         
-        , testProperty "write and lookup a tree" $ \paths -> 
+        , testProperty "get entry by name" $ \paths -> 
            with_repo $ \repo -> do
              let tree = Map.fromList paths
              storedOid <- Tree.write repo tree
              foundTree <- Tree.lookup repo storedOid
              entries <- mapM (Tree.entry foundTree . fst) paths
              return $ tree == (Map.fromList $ map (Types.treeEntryName &&& Types.treeEntryOid) entries)
+        
+        , testProperty "list all tree entries" $ \paths ->
+           with_repo $ \repo -> do
+             let tree = Map.fromList paths
+             storedOid <- Tree.write repo tree
+             foundTree <- Tree.lookup repo storedOid
+             entries <- Tree.entries foundTree
+             return $ entries == entries
         ]
 
 

@@ -21,7 +21,11 @@ test-suite git_test
     directory,
     unix,
     containers,
-    process
+    process,
+    Glob,
+    test-framework,
+    test-framework-quickcheck2,
+    test-framework-th
   extra-libraries: git2
 
 library

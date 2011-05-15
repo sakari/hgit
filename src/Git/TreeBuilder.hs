@@ -1,6 +1,6 @@
 {-# LANGUAGE NamedFieldPuns #-}
 
-module Git.TreeBuilder where
+module Git.TreeBuilder (TreeBuilder, create, insert, write) where
 import Git.Oid
 import Git.Repository
 import Git.Result

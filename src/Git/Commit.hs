@@ -1,3 +1,5 @@
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+
 module Git.Commit where
 import Foreign.ForeignPtr hiding (newForeignPtr)
 import Foreign.Concurrent
@@ -33,8 +35,23 @@ type OidT a = Oid
 type Author = Signature
 type Committer = Signature
 
-data Time = Time { time_epoch::Word, time_offset::Word }
+newtype TimeOffset = TimeOffset { timeOffset::Int }
+                   deriving (Show, Num, Eq, Integral, Real, Enum, Ord)
+
+instance Bounded TimeOffset where
+  minBound = -maxBound
+  maxBound = 14 * 60 + 59
+
+newtype Epoch = Epoch { epoch::Int }
+                deriving (Show, Num, Eq, Integral, Real, Enum, Ord)
+                         
+instance Bounded Epoch where
+  minBound = 0
+  maxBound = Epoch (maxBound::Int)
+    
+data Time = Time { time_epoch::Epoch, time_offset::TimeOffset }
           deriving Show
+                   
 data Signature = Signature { signature_author::String, signature_email::String, signature_time::Time }
                deriving Show
 
@@ -42,7 +59,7 @@ with_signature::Signature -> (C'git_signature -> Result a) -> Result a
 with_signature sig action = do 
   withCString (signature_author sig) $ \c'author -> do 
     withCString (signature_email sig) $ \c'email ->  do
-      let c'time = C'git_time (fromIntegral $ time_epoch $ signature_time sig) (fromIntegral $ time_offset $ signature_time sig)
+      let c'time = C'git_time (fromIntegral $ epoch $ time_epoch $ signature_time sig) (fromIntegral $ timeOffset $ time_offset $ signature_time sig)
           c'sig = C'git_signature c'author c'email c'time
       action c'sig
       

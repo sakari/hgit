@@ -29,8 +29,8 @@ insert TreeBuilder { treeBuilder } path oid = withForeignPtr treeBuilder $ \c'bu
       c'git_treebuilder_insert nullPtr c'builder c'path c'oid 0 `wrap_git_result` return ()
 
 write::Repository -> TreeBuilder -> IO Oid 
-write Repository { repository_ptr } TreeBuilder { treeBuilder } = do
-  withForeignPtr repository_ptr $ \c'repository ->
+write repo TreeBuilder { treeBuilder } = do
+  withCRepository repo $ \c'repository ->
     withForeignPtr treeBuilder $ \c'builder -> do
       alloca $ \oidPtr ->
         c'git_treebuilder_write oidPtr c'repository c'builder `wrap_git_result` fromCOid oidPtr

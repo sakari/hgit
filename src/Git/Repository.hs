@@ -1,4 +1,5 @@
-module Git.Repository (init, open, Repository(..)) where
+{-# LANGUAGE NamedFieldPuns #-}
+module Git.Repository (init, open, Repository, withCRepository) where
 import Foreign.ForeignPtr hiding (newForeignPtr)
 import Foreign.Concurrent
 import Foreign.Marshal.Alloc
@@ -20,6 +21,9 @@ newRepository path constructor = alloca $ \ptr_ptr -> withCString path $ \c'path
       wrap ptr_ptr = do
         repo_ptr <- peek ptr_ptr
         liftM Repository $ repo_ptr `newForeignPtr` c'git_repository_free repo_ptr
+
+withCRepository::Repository -> (Ptr C'git_repository -> IO a) -> IO a
+withCRepository Repository { repository_ptr } c = withForeignPtr repository_ptr c
 
 init::FilePath -> IO Repository
 init path = newRepository path $ \pptr c'path -> c'git_repository_init pptr c'path 0

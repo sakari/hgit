@@ -20,7 +20,7 @@ lookup_wrapped_object repo oid wrapper otype =
 lookup_any::Repository -> Oid -> C'git_otype -> IO Object
 lookup_any repo oid otype = do
   alloca $ \ptr -> do
-    withForeignPtr (repository_ptr repo) $ \repo_ptr -> do
+    withCRepository repo $ \repo_ptr -> do
       withCOid oid $ \oid_ptr -> do
         c'git_object_lookup ptr repo_ptr oid_ptr otype `wrap_git_result` wrap ptr repo_ptr oid_ptr
   where

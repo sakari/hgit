@@ -35,4 +35,5 @@ library
     Git.Repository,
     Git.Oid
   default-extensions: 
-    NamedFieldPuns
+    NamedFieldPuns,
+    ScopedTypeVariables

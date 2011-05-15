@@ -8,6 +8,8 @@ import Foreign.Marshal.Utils
 import Foreign.Storable
 import Foreign.C.String
 
+import Data.Word
+
 import Git.Result
 import Git.Repository
 import Git.Oid
@@ -31,8 +33,10 @@ type OidT a = Oid
 type Author = Signature
 type Committer = Signature
 
-data Time = Time { time_epoch::Integer, time_offset::Int }
+data Time = Time { time_epoch::Word, time_offset::Word }
+          deriving Show
 data Signature = Signature { signature_author::String, signature_email::String, signature_time::Time }
+               deriving Show
 
 with_signature::Signature -> (C'git_signature -> Result a) -> Result a
 with_signature sig action = do 

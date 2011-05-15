@@ -6,6 +6,9 @@ import Foreign.C.String
 
 data Oid = Oid { oid_ptr::ForeignPtr C'git_oid }
 
+instance Eq Oid where
+  left == right = fmt left == fmt right
+
 instance Show Oid where
   show oid = "Oid " ++ fmt oid
 

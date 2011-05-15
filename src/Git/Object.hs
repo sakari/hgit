@@ -8,12 +8,9 @@ import Foreign.Marshal.Alloc
 import Git.Result
 import Git.Repository
 import Git.Oid
+import Control.Monad.Instances
 
 data Object = Object { object_ptr::ForeignPtr C'git_object }
-
-instance Functor (Either a) where
-  fmap f (Right r) = Right $ f r
-  fmap f (Left l) = Left l
 
 lookup_wrapped_object::Repository -> Oid -> (ForeignPtr a -> b) -> C'git_otype -> Result b 
 lookup_wrapped_object repo oid wrapper otype = 

@@ -12,29 +12,22 @@ test-suite git_test
   main-is: Main.hs
   default-language: Haskell98
   type: exitcode-stdio-1.0
-  hs-source-dirs: tests
+  hs-source-dirs: tests src
   build-depends:
     base >= 4,
-    hgit,
     filepath >= 1.2.0.0,
     QuickCheck >= 2.4.0.0,
-    directory,
-    unix,
-    containers,
-    process,
-    Glob,
     test-framework,
     test-framework-quickcheck2,
-    test-framework-th
-  extra-libraries: git2
+    hlibgit2
 
 library
   default-language: Haskell98
   hs-source-dirs: src 
   build-depends:
-    base >= 3 && < 5,
     hlibgit2,
-    bytestring
+    bytestring,
+    base
   exposed-modules:
     Git.Commit,
     Git.Repository,

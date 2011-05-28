@@ -2,6 +2,7 @@ Name:                hgit
 Version:             0.0
 Description:         Git for Haskell
 License-file:        LICENSE
+License: 	     BSD3
 Author:              Sakari Jokinen
 Maintainer:          sakariij@gmail.com
 Build-Type:          Simple

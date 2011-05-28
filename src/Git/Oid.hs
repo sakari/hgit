@@ -13,6 +13,9 @@ data Oid = Oid { oid_ptr::ForeignPtr C'git_oid }
 instance Eq Oid where
   left == right = fmt left == fmt right
 
+instance Ord Oid where
+  left `compare` right = fmt left `compare` fmt right
+
 instance Show Oid where
   show oid = "Oid " ++ fmt oid
 
@@ -32,7 +35,8 @@ mkstr string = unsafePerformIO $ do
   return $ Oid fptr 
 
 withCOid::Oid -> (Ptr C'git_oid -> IO a) -> IO a
-withCOid (Oid oid_ptr) c = withForeignPtr oid_ptr c 
+withCOid (Oid oid_ptr) c = withForeignPtr oid_ptr $ \ptr -> 
+  alloca $ \tmp -> peek ptr >>= poke tmp >> c tmp
 
 withCOids::[Oid] -> ([Ptr C'git_oid] -> IO a) -> IO a
 withCOids oids f = go oids [] 

@@ -25,10 +25,11 @@ data Tree = Tree { tree_ptr::ForeignPtr C'git_tree }
 lookup::Repository -> Oid -> IO Tree
 lookup repo oid = lookup_wrapped_object repo oid Tree c'GIT_OBJ_TREE
 
-write::Repository -> Map.Map EntryName Oid -> IO Oid
+write::Repository -> Map.Map EntryName (Oid, Attributes) -> IO Oid
 write repo paths = do
   builder <- Builder.create
-  mapM_ (Builder.insert builder . uncurry TreeEntry) $ Map.toList $ paths
+  let build k (oid, attr) = TreeEntry k oid attr 
+  mapM_ (Builder.insert builder) $ Map.elems $ Map.mapWithKey build paths
   Builder.write repo builder 
 
 withCTree::Tree -> (Ptr C'git_tree -> IO a) -> IO a
@@ -44,11 +45,14 @@ entries tree = withCTree tree $ \c'tree -> do
     where
       go c'tree index = c'git_tree_entry_byindex c'tree (fromIntegral index) >>= fromCEntry
 
-entry::Tree -> EntryName -> IO TreeEntry
+entry::Tree -> EntryName -> IO (Maybe TreeEntry)
 entry tree EntryName { entryName } = withCTree tree $ \c'tree ->
-   withCString entryName $ \c'path -> c'git_tree_entry_byname c'tree c'path >>= fromCEntry
+   withCString entryName $ \c'path -> do
+     c'entry <- c'git_tree_entry_byname c'tree c'path
+     if c'entry == nullPtr then return Nothing
+       else Just `fmap` fromCEntry c'entry
      
 fromCEntry::Ptr C'git_tree_entry -> IO TreeEntry
-fromCEntry c'entry = liftM2 TreeEntry (fmap EntryName $ c'git_tree_entry_name c'entry >>= peekCString) 
-       (c'git_tree_entry_id c'entry >>= fromCOid)
-       -- todo: entry attributes| (fmap fromIntegral $ c'git_tree_entry_attributes c'entry)
+fromCEntry c'entry = liftM3 TreeEntry (fmap EntryName $ c'git_tree_entry_name c'entry >>= peekCString) 
+                     (c'git_tree_entry_id c'entry >>= fromCOid)
+                     (fmap fromIntegral $ c'git_tree_entry_attributes c'entry)

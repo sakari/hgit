@@ -14,8 +14,12 @@ import Data.Char
 import qualified Data.Set as Set
 
 instance Arbitrary Oid where
-  arbitrary = mkstr `fmap` vectorOf 40 arbitrary
-  
+  arbitrary = fmap mkstr $ vectorOf 40 $ elements $ ['a' .. 'f'] ++ ['A' .. 'F'] ++ ['0' .. '9']
+  shrink oid | fmt oid == replicate 40 '0' = []
+             | otherwise = fmap mkstr $ (pad . filter isHexDigit) `map` shrink (fmt oid)   
+         where
+            pad str = replicate (40 - length str) '0' ++ take 40 str
+
 instance Arbitrary TimeOffset where
   arbitrary = arbitrarySizedBoundedIntegral
   shrink (TimeOffset t) = filter inBounds $ map TimeOffset $ shrink t 
@@ -39,9 +43,9 @@ instance Arbitrary Time where
   shrink (Time epoch offset) = (Time <$> pure epoch <*> shrink offset) ++ (Time <$> shrink epoch <*> pure offset)
 
 instance Arbitrary EntryName where
-  arbitrary = EntryName <$> listOf (elements $ validEntryChars)
-  shrink EntryName { entryName } = EntryName <$> filter isValidEntryChar `map` shrink entryName 
-
+  arbitrary = EntryName <$> listOf1 (elements $ validEntryChars)
+  shrink EntryName { entryName } = EntryName <$> filter (not . null) (filter isValidEntryChar `map` shrink entryName) 
+      
 validEntryChars::[Char]
 validEntryChars = filter valid $ map chr [0 .. 256]
   where

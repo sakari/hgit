@@ -24,11 +24,11 @@ create = alloca $ \ptr -> c'git_treebuilder_create ptr nullPtr `wrap_git_result`
     go ptr = fmap TreeBuilder $ newForeignPtr ptr $ c'git_treebuilder_free ptr
 
 insert::TreeBuilder -> TreeEntry -> IO ()
-insert TreeBuilder { treeBuilder } TreeEntry { treeEntryName, treeEntryOid } = 
+insert TreeBuilder { treeBuilder } TreeEntry { treeEntryName, treeEntryOid, treeEntryAttributes } = 
   withForeignPtr treeBuilder $ \c'builder -> do 
     withCString (entryName treeEntryName) $ \c'path -> do
       withCOid treeEntryOid $ \c'oid -> do
-        c'git_treebuilder_insert nullPtr c'builder c'path c'oid 0 `wrap_git_result` return ()
+        c'git_treebuilder_insert nullPtr c'builder c'path c'oid (fromIntegral treeEntryAttributes) `wrap_git_result` return ()
 
 write::Repository -> TreeBuilder -> IO Oid 
 write repo TreeBuilder { treeBuilder } = do

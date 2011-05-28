@@ -3,11 +3,13 @@ import Test.Framework.Providers.QuickCheck2
 import Test.Framework
 import Test.QuickCheck
 import Test.Util
-
+import qualified Git.Oid as Oid
 import qualified Git.Tree as Tree
 import qualified Git.Types as Types
 import Control.Arrow
 import qualified Data.Map as Map
+import Data.List (sort)
+import System.Posix.Types
 
 tests = testGroup "Test.Cases.Tree" 
         [ 
@@ -15,22 +17,51 @@ tests = testGroup "Test.Cases.Tree"
            with_repo $ \repo -> do
              fails $ Tree.lookup repo oid
         
-        , testProperty "get entry by name" $ \paths -> 
+        , testProperty "write and lookup a tree" $ \paths ->
            with_repo $ \repo -> do
              let tree = Map.fromList paths
              storedOid <- Tree.write repo tree
              foundTree <- Tree.lookup repo storedOid
-             entries <- mapM (Tree.entry foundTree . fst) paths
-             return $ tree == (Map.fromList $ map (Types.treeEntryName &&& Types.treeEntryOid) entries)
+             return True
+          
+        , testProperty "return Nothing if no entry with the given name" $ \path -> withStoredTree $ \paths tree -> do
+             r <- Tree.entry tree path
+             return $ r == Nothing || path `elem` map fst paths
+             
+        , testProperty "get entry by name" $ \path entryOid entryAttr restOfPaths -> do  
+             let allPaths = restOfPaths ++ [(path, (entryOid, entryAttr))]
+             flip withStoredTree allPaths $ \paths tree -> do
+               entry <- Tree.entry tree path
+               (Just $ Types.TreeEntry path entryOid entryAttr) `assertEqual` entry 
         
-        , testProperty "list all tree entries" $ \paths ->
-           with_repo $ \repo -> do
-             let tree = Map.fromList paths
-             storedOid <- Tree.write repo tree
-             foundTree <- Tree.lookup repo storedOid
-             entries <- Tree.entries foundTree
-             return $ entries == entries
+        , testProperty "list all tree entries" $ withStoredTree $ \paths tree -> do
+             entries <- Tree.entries tree
+             let go (name, (oid, attr)) = Types.TreeEntry name oid attr
+             sort entries `assertEqual` (sort $ map go paths)
+             
+        , testProperty "FAILING: finding entry 'b' fails" $ with_repo $ \repo -> do
+             let zeroOid = Oid.mkstr $ replicate 40 '0' 
+                 name = Types.EntryName "b"
+                 attrs = Types.Attributes 0
+                 target = Types.TreeEntry name zeroOid attrs                 
+                 directory = Types.Attributes 16384
+                 haystack = Map.fromList [(name, (zeroOid, attrs)) 
+                                         , (Types.EntryName "ba", (zeroOid, directory))
+                                         , (Types.EntryName "a", (zeroOid, Types.Attributes 0))
+                                         ]
+             oid <- Tree.write repo haystack
+             tree <- Tree.lookup repo oid
+             entry <- Tree.entry tree name
+             -- Bug?: Just target `assertEqual` entry
+             Nothing  `assertEqual` entry
         ]
-
-
+        
+type Paths = [(Types.EntryName, (Oid.Oid, Types.Attributes))]        
+withStoredTree::Testable a => (Paths -> Tree.Tree -> IO a) -> Paths -> Property
+withStoredTree c paths = with_repo $ \repo -> do 
+  let tree = Map.fromList paths
+      uniquePaths = Map.toList tree
+  storedOid <- Tree.write repo tree
+  foundTree <- Tree.lookup repo storedOid
+  c uniquePaths foundTree
 

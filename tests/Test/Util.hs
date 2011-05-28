@@ -30,9 +30,3 @@ assertEqual expected actual | expected == actual = return True
                                                    ++ show expected 
                                                    ++ " Got: " 
                                                    ++ show actual)
-
-instance Arbitrary Attributes where
-  arbitrary = arbitrarySizedBoundedIntegral
-  shrink = fmap fromIntegral . filter inBounds . shrink . toInteger 
-    where 
-      inBounds v = toInteger (minBound::Attributes) <= v && v <= toInteger (maxBound::Attributes)

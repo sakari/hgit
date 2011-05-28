@@ -46,6 +46,19 @@ instance Arbitrary EntryName where
   arbitrary = EntryName <$> listOf1 (elements $ validEntryChars)
   shrink EntryName { entryName } = EntryName <$> filter (not . null) (filter isValidEntryChar `map` shrink entryName) 
       
+instance Arbitrary TreeEntry where 
+  arbitrary = TreeEntry <$> arbitrary <*> arbitrary <*> arbitrary
+  shrink TreeEntry { treeEntryName, treeEntryOid, treeEntryAttributes } = 
+    (TreeEntry <$> shrink treeEntryName <*> pure treeEntryOid <*> pure treeEntryAttributes) ++
+    (TreeEntry <$> pure treeEntryName <*> shrink treeEntryOid <*> pure treeEntryAttributes) ++
+    (TreeEntry <$> pure treeEntryName <*> pure treeEntryOid <*> shrink treeEntryAttributes)
+
+instance Arbitrary Attributes where
+  arbitrary = arbitrarySizedBoundedIntegral
+  shrink = fmap fromIntegral . filter inBounds . shrink . toInteger 
+    where 
+      inBounds v = toInteger (minBound::Attributes) <= v && v <= toInteger (maxBound::Attributes)
+
 validEntryChars::[Char]
 validEntryChars = filter valid $ map chr [0 .. 256]
   where

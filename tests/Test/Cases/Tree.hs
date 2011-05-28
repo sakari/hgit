@@ -6,6 +6,7 @@ import Test.Util
 import qualified Git.Oid as Oid
 import qualified Git.Tree as Tree
 import qualified Git.Types as Types
+import qualified Git.TreeBuilder as Builder
 import Control.Arrow
 import qualified Data.Map as Map
 import Data.List (sort)
@@ -39,7 +40,7 @@ tests = testGroup "Test.Cases.Tree"
              let go (name, (oid, attr)) = Types.TreeEntry name oid attr
              sort entries `assertEqual` (sort $ map go paths)
              
-        , testProperty "FAILING: finding entry 'b' fails" $ with_repo $ \repo -> do
+        , testProperty "Finding entry 'b' succeeds (https://github.com/libgit2/libgit2/issues/127)" $ with_repo $ \repo -> do
              let zeroOid = Oid.mkstr $ replicate 40 '0' 
                  name = Types.EntryName "b"
                  attrs = Types.Attributes 0
@@ -52,8 +53,24 @@ tests = testGroup "Test.Cases.Tree"
              oid <- Tree.write repo haystack
              tree <- Tree.lookup repo oid
              entry <- Tree.entry tree name
-             -- Bug?: Just target `assertEqual` entry
-             Nothing  `assertEqual` entry
+             Just target `assertEqual` entry
+                     
+        , testProperty "removing non existing entry fails" $ \name entries -> with_repo $ \repo -> do
+             builder <- Builder.create
+             mapM (Builder.insert builder) $ filter ((name /=) . Types.treeEntryName) entries
+             fails $ Builder.remove builder name
+
+        , testProperty "remove entry from treebuilder" $ \entries_l remove entries_r -> with_repo $ \repo -> do
+             let entries = removeName entries_l ++ [remove] ++ removeName entries_r
+                 name = Types.treeEntryName remove
+                 removeName = filter ((name /=) . Types.treeEntryName)
+             builder <- Builder.create
+             Builder.insert builder `mapM_` entries
+             Builder.remove builder name
+             oid <- Builder.write repo builder
+             tree <- Tree.lookup repo oid
+             entry <- Tree.entry tree name
+             Nothing `assertEqual` entry
         ]
         
 type Paths = [(Types.EntryName, (Oid.Oid, Types.Attributes))]        

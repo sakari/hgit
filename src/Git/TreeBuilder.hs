@@ -1,6 +1,11 @@
 {-# LANGUAGE NamedFieldPuns #-}
 
-module Git.TreeBuilder (TreeBuilder, create, insert, write) where
+module Git.TreeBuilder (TreeBuilder
+                       , create
+                       , insert
+                       , write
+                       , remove
+                       ) where
 import Git.Oid
 import Git.Repository
 import Git.Result
@@ -17,6 +22,14 @@ import Foreign.ForeignPtr hiding (newForeignPtr)
 import Foreign.C.String
 
 data TreeBuilder = TreeBuilder { treeBuilder::ForeignPtr C'git_treebuilder }
+
+withCTreeBuilder::TreeBuilder -> (Ptr C'git_treebuilder -> IO a) -> IO a
+withCTreeBuilder TreeBuilder { treeBuilder } = withForeignPtr treeBuilder
+
+remove::TreeBuilder -> EntryName -> IO ()
+remove treeBuilder EntryName { entryName } = withCTreeBuilder treeBuilder $ \c'builder ->
+  withCString entryName $ \c'entry -> 
+  c'git_treebuilder_remove c'builder c'entry `wrap_git_result` return ()
 
 create::IO TreeBuilder
 create = alloca $ \ptr -> c'git_treebuilder_create ptr nullPtr `wrap_git_result` (peek ptr >>= go)

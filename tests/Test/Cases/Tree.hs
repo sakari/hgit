@@ -71,6 +71,20 @@ tests = testGroup "Test.Cases.Tree"
              tree <- Tree.lookup repo oid
              entry <- Tree.entry tree name
              Nothing `assertEqual` entry
+             
+        , testProperty "Bug: Removing entry fails" $ with_repo $ \repo -> do
+             let zeroOid = Oid.mkstr $ replicate 40 '0' 
+                 name = Types.EntryName "b"
+                 attrs = Types.Attributes 0
+                 target = Types.TreeEntry name zeroOid attrs                 
+                 directory = Types.Attributes 16384
+                 haystack = [ Types.TreeEntry name zeroOid attrs 
+                            , Types.TreeEntry (Types.EntryName "ba") zeroOid  directory
+                            , Types.TreeEntry (Types.EntryName "a") zeroOid (Types.Attributes 0)
+                            ]
+             builder <- Builder.create
+             Builder.insert builder `mapM_` haystack
+             fails $ Builder.remove builder name
         ]
         
 type Paths = [(Types.EntryName, (Oid.Oid, Types.Attributes))]        

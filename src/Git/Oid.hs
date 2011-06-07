@@ -1,4 +1,4 @@
-module Git.Oid (Oid, fmt, mkstr, withCOid, fromCOid, withCOids) where
+module Git.Oid (Oid, fmt, mkstr, withCOid, fromCOid, fromCOidStruct, withCOids) where
 import Bindings.Libgit2
 import Foreign.ForeignPtr
 import Foreign.Ptr
@@ -43,6 +43,12 @@ withCOids oids f = go oids []
   where
     go [] cs = f $ reverse cs
     go (o:os) cs = withCOid o $ \c'oid -> go os (c'oid:cs)
+
+fromCOidStruct::C'git_oid -> IO Oid
+fromCOidStruct c'oid = do
+  fptr <- mallocForeignPtr
+  withForeignPtr fptr $ \ptr -> poke ptr c'oid
+  return $ Oid fptr
 
 fromCOid::Ptr C'git_oid -> IO Oid
 fromCOid c'oid = do

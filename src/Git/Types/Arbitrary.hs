@@ -1,4 +1,4 @@
-{-# LANGUAGE NamedFieldPuns #-}
+{-# LANGUAGE NamedFieldPuns, TypeSynonymInstances #-}
 
 module Git.Types.Arbitrary where
 import Control.Applicative
@@ -7,11 +7,14 @@ import Git.Oid
 import Git.Commit
 import Git.Tree
 import Git.Types
+import qualified Git.Index as Index
 
 import Test.QuickCheck hiding (Result)
 import Test.QuickCheck.Property hiding (Result)
 import Data.Char
+import qualified Data.ByteString as ByteString
 import qualified Data.Set as Set
+import System.Posix.Types
 
 instance Arbitrary Oid where
   arbitrary = fmap mkstr $ vectorOf 40 $ elements $ ['a' .. 'f'] ++ ['A' .. 'F'] ++ ['0' .. '9']
@@ -58,6 +61,37 @@ instance Arbitrary Attributes where
   shrink = fmap fromIntegral . filter inBounds . shrink . toInteger 
     where 
       inBounds v = toInteger (minBound::Attributes) <= v && v <= toInteger (maxBound::Attributes)
+
+instance Arbitrary Index.Entry where
+  arbitrary = Index.Entry <$> arbitrary <*> arbitrary <*> arbitrary <*>
+              arbitrary <*> arbitrary <*> arbitrary <*>
+              arbitrary <*> arbitrary <*> arbitrary <*>
+              arbitrary
+  shrink (Index.Entry entry_ctime entry_mtime entry_dev entry_ino 
+                     entry_mode entry_uid entry_gid entry_file_size
+                     entry_oid entry_path) = safe'tail $ Index.Entry 
+                                      <$> alts entry_ctime 
+                                      <*> alts entry_mtime 
+                                      <*> alts entry_dev
+                                      <*> alts entry_ino
+                                      <*> alts entry_mode
+                                      <*> alts entry_uid
+                                      <*> alts entry_gid
+                                      <*> alts entry_file_size
+                                      <*> alts entry_oid
+                                      <*> alts entry_path
+                                        where
+                                          alts e = e : shrink e
+                                          safe'tail [] = [] 
+                                          safe'tail (_:as) = as
+instance Arbitrary Index.Time where
+  arbitrary = Index.Time <$> arbitrary <*> arbitrary
+
+instance Arbitrary EpochTime where
+  arbitrary = fmap fromInteger arbitrary
+
+instance Arbitrary ByteString.ByteString where
+  arbitrary = ByteString.pack `fmap` listOf1 arbitrary
 
 validEntryChars::[Char]
 validEntryChars = filter valid $ map chr [0 .. 256]

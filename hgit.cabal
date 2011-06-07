@@ -22,7 +22,9 @@ test-suite git_test
     hlibgit2,
     directory,
     temporary,
-    containers
+    containers,
+    bytestring,
+    filepath
 
 library
   default-language: Haskell98
@@ -31,7 +33,9 @@ library
     hlibgit2,
     bytestring,
     base,
-    containers
+    containers,
+    bytestring,
+    filepath
   exposed-modules:
     Git.Commit,
     Git.Repository,

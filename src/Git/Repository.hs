@@ -1,5 +1,5 @@
 {-# LANGUAGE NamedFieldPuns #-}
-module Git.Repository (init, open, Repository, withCRepository) where
+module Git.Repository (init, open, Repository, writeFile, withCRepository) where
 import Foreign.ForeignPtr hiding (newForeignPtr)
 import Foreign.Concurrent
 import Foreign.Marshal.Alloc
@@ -10,7 +10,10 @@ import Foreign.Ptr
 import Bindings.Libgit2
 import Control.Monad
 import Git.Result
-import Prelude hiding (init)
+import Git.Types
+import qualified Data.ByteString as ByteString
+import Prelude hiding (init, writeFile)
+import System.FilePath
 
 data Repository = Repository { repository_ptr::ForeignPtr C'git_repository }
 
@@ -30,3 +33,13 @@ init path = newRepository path $ \pptr c'path -> c'git_repository_init pptr c'pa
         
 open::FilePath -> IO Repository
 open path = newRepository path c'git_repository_open
+
+workdir::Repository -> IO FilePath
+workdir repo = withCRepository repo $ \c'repo -> 
+  c'git_repository_workdir c'repo >>= peekCString
+
+writeFile::Repository -> EntryName -> ByteString.ByteString -> IO ()
+writeFile repo name contents = do
+  repoPath <- workdir repo
+  let absPath = repoPath </> entryName name
+  absPath `ByteString.writeFile` contents 

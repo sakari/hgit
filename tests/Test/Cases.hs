@@ -1,12 +1,13 @@
 module Test.Cases where
-import qualified Test.Cases.Commit as Commit
-import qualified Test.Cases.Oid as Oid
-import qualified Test.Cases.Tree as Tree
-import qualified Test.Cases.Index as Index
-
+import qualified Test.Cases.Commit
+import qualified Test.Cases.Oid
+import qualified Test.Cases.Tree
+import qualified Test.Cases.Index
+import qualified Test.Cases.Blob
 tests = [
-  Commit.tests
-  , Oid.tests
-  , Tree.tests
-  , Index.tests
+  Test.Cases.Commit.tests
+  , Test.Cases.Oid.tests
+  , Test.Cases.Tree.tests
+  , Test.Cases.Index.tests
+  , Test.Cases.Blob.tests
   ]

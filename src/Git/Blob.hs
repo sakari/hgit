@@ -1,5 +1,6 @@
 module Git.Blob (
   lookup
+  , write
   ) where
 
 import Bindings.Libgit2
@@ -11,6 +12,12 @@ import Foreign.Marshal.Alloc
 import Git.Result
 import Foreign.Storable
 import Foreign.Ptr
+
+write::Repository -> ByteString.ByteString -> IO Oid
+write repo contents = withCRepository repo $ \c'repo -> 
+  alloca $ \c'oid -> do
+    useAsCStringLen contents $ \(c'buffer, size) -> do
+      c'git_blob_create_frombuffer c'oid c'repo c'buffer (fromIntegral size) `wrap_git_result` fromCOid c'oid
 
 lookup::Repository -> Oid -> IO ByteString.ByteString
 lookup repo oid = withCRepository repo $ \c'repo -> 

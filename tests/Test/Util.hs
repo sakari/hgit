@@ -18,6 +18,9 @@ with_repo :: (Testable a) => (Repository -> IO a) -> Property
 with_repo c = morallyDubiousIOProperty $ do
   withSystemTempDirectory "tmp_git" $ \p -> init p >>= c
 
+success:: IO a -> IO ()
+success c = c >> return ()
+
 fails :: IO a -> IO ()
 fails c = go  `catch` (\Error {} -> return ())
   where

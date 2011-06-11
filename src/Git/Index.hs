@@ -4,6 +4,7 @@ module Git.Index (
   open
   , add
   , addFile
+  , remove
   , find
   , write
   , Index
@@ -23,6 +24,7 @@ import Data.Word
 import Data.Int
 import Git.Oid
 import Git.Types
+import Git.Error
 import System.FilePath
 import Control.Exception
 import System.Posix.Types
@@ -58,6 +60,16 @@ addFile::Index -> EntryName -> Stage -> IO ()
 addFile index name stage = withCIndex index $ \c'index ->
   withCString (entryName name) $ \c'name -> do 
     c'git_index_add c'index c'name (fromIntegral stage) `wrap_git_result` return ()
+
+remove::Index -> EntryName -> IO ()
+remove index name = withCIndex index $ \c'index ->
+  withCString (entryName name) $ \c'name -> do
+    result <- c'git_index_find c'index c'name
+    if result < 0 then throwIO $ Error { error_explanation = "No entry in index with name: '" ++ entryName name ++ "'" 
+                                       , error_code = 0
+                                       }
+      else c'git_index_remove c'index result `wrap_git_result` return ()
+                     
 
 find::Index -> EntryName -> IO (Maybe Entry)
 find index (EntryName path) = withCIndex index $ \ c'index -> withCString path $ \c'path -> do

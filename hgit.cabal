@@ -8,6 +8,10 @@ Maintainer:          sakariij@gmail.com
 Build-Type:          Simple
 Cabal-Version:       >=1.10
 
+Flag bundled-libgit2
+  default: False
+  description: Use hlibgit2 with bundled libgit2 (ghci will not work). The alternative is to use a separately installed.
+
 test-suite git_test
   main-is: Main.hs
   default-language: Haskell98
@@ -29,13 +33,16 @@ test-suite git_test
 library
   default-language: Haskell98
   hs-source-dirs: src 
+  if !flag(bundled-libgit2)
+    extra-libraries : git2
   build-depends:
     hlibgit2,
     bytestring,
     base,
     containers,
     bytestring,
-    filepath
+    filepath,
+    directory
   exposed-modules:
     Git.Commit,
     Git.Repository,

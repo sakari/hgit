@@ -12,6 +12,7 @@ module Git.Index (
   , Entry(..)    
   ) where
 
+import qualified Data.ByteString as ByteString
 import qualified Git.Repository as Repository
 import Foreign.ForeignPtr hiding (newForeignPtr)
 import Foreign.Concurrent
@@ -22,6 +23,7 @@ import Foreign.C.String
 import Git.Result
 import Data.Word
 import Data.Int
+import Data.Char
 import Git.Oid
 import Git.Types
 import Git.Error
@@ -71,6 +73,25 @@ remove index name = withCIndex index $ \c'index ->
       else c'git_index_remove c'index result `wrap_git_result` return ()
                      
 
+{-| Find entry from index
+
+First create a repository and open the index     
+  
+>>> repo <- Repository.init "find-index-repo"
+>>> index <- open repo     
+
+If the entry is not present 'find' returns 'Nothing'
+
+>>> Nothing <- find index $ EntryName "abc"
+
+Now if we 'addFile' the entry to index 'find' returns the 'Entry'    
+
+>>> Repository.writeFile repo (EntryName "abc") $ ByteString.singleton $ toEnum $ ord 'a'     
+>>> addFile index (EntryName "abc") 1
+>>> Just e <- find index $ EntryName "abc"
+    
+-} 
+
 find::Index -> EntryName -> IO (Maybe Entry)
 find index (EntryName path) = withCIndex index $ \ c'index -> withCString path $ \c'path -> do
   result <- c'git_index_find c'index c'path
@@ -80,11 +101,15 @@ find index (EntryName path) = withCIndex index $ \ c'index -> withCString path $
     if ptr == nullPtr then throwIO (IndexOutOfBounds "index out of bounds")
       else Just `fmap` fromCEntry ptr
 
+-- | Read index from disk
+    
 open::Repository.Repository -> IO Index
 open repo = Repository.withCRepository repo $ \c'repo -> 
   alloca $ \c'index -> do 
     c'git_index_open_inrepo c'index c'repo `wrap_git_result` (peek c'index >>= fromCIndex)
 
+-- | Write in-memory index to disk
+    
 write::Index -> IO ()
 write index = withCIndex index $ flip wrap_git_result (return ()) . c'git_index_write 
 

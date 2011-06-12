@@ -1,8 +1,14 @@
 {-# LANGUAGE NamedFieldPuns #-}
 
+{-|
+ There are three kinds of types for repositories 'Repository', 'BareRepository' and 'AnyRepository' when you do not care whether 
+ the repository is bare or not. 
+-}
+
 module Git.Repository (init
                       , initBare
                       , open
+                      , openAny
                       , Repository
                       , BareRepository
                       , AnyRepository
@@ -30,9 +36,6 @@ import qualified Prelude
 import System.FilePath
 import System.Directory
 import Data.Char
-
-
--- | There are two ways to create 'Repository' values 'init' and 'open'.
 
 data Repository = Repository { repository_ptr::ForeignPtr C'git_repository }
 data BareRepository = BareRepository { bare_repository_ptr::ForeignPtr C'git_repository }
@@ -104,13 +107,22 @@ instance Repo Repository where
   bare = const Nothing
   repo = Just . Repository
   
+instance Repo AnyRepository where  
+  bare = Just . AnyRepository
+  repo = Just . AnyRepository
+  
 -- | Open an existing repository
---
+--  
 -- >>> init "open-repo"
 -- >>> Just repo <- open "open-repo/.git"::IO (Maybe Repository)
--- 
+--
 -- >>> initBare "open-bare-repo"
 -- >>> Just bare <- open "open-bare-repo"::IO (Maybe BareRepository)
+--
+-- >>> init "open-any-repo"  
+-- >>> Just repo <- open "open-any-repo/.git"::IO (Maybe AnyRepository)
+-- >>> initBare "open-any-bare-repo"
+-- >>> Just bare <- open "open-any-bare-repo"::IO (Maybe AnyRepository)
 
 open::(Repo repo, WithAnyRepository repo) => FilePath -> IO (Maybe repo)
 open path = newRepository path go c'git_repository_open

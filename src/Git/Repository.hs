@@ -8,6 +8,7 @@ module Git.Repository (init
                       , AnyRepository
                       , WithAnyRepository
                       , withCAnyRepository
+                      , anyRepository
                       , writeFile
                       , withCRepository
                       , withCBareRepository
@@ -39,15 +40,19 @@ data AnyRepository = AnyRepository { any_repository_ptr::ForeignPtr C'git_reposi
 
 class WithAnyRepository repo where
   withCAnyRepository::repo -> (Ptr C'git_repository -> IO a) -> IO a
+  anyRepository::repo -> AnyRepository
 
 instance WithAnyRepository AnyRepository where
   withCAnyRepository AnyRepository { any_repository_ptr } c = withForeignPtr any_repository_ptr c
+  anyRepository = id
   
 instance WithAnyRepository Repository where
   withCAnyRepository = withCRepository
+  anyRepository = AnyRepository . repository_ptr
 
 instance WithAnyRepository BareRepository where
   withCAnyRepository = withCBareRepository
+  anyRepository = AnyRepository . bare_repository_ptr
 
 withCBareRepository::BareRepository -> (Ptr C'git_repository -> IO a) -> IO a
 withCBareRepository BareRepository { bare_repository_ptr } c = withForeignPtr bare_repository_ptr c

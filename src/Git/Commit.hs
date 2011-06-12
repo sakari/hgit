@@ -30,13 +30,13 @@ import Bindings.Libgit2
 import Prelude hiding (lookup)
 
 data Commit = Commit { commit_ptr::ForeignPtr C'git_commit 
-                     , commit_repo::Repository
+                     , commit_repo::AnyRepository
                      }
 
-lookup::Repository -> Oid -> IO Commit
+lookup::WithAnyRepository repo => repo -> Oid -> IO Commit
 lookup repo oid = lookup_wrapped_object repo oid wrap c'GIT_OBJ_COMMIT
   where
-    wrap fptr = Commit { commit_ptr = fptr, commit_repo = repo}
+    wrap fptr = Commit { commit_ptr = fptr, commit_repo = anyRepository repo}
   
 type Ref = String
 type Message = String
@@ -84,10 +84,10 @@ withForeignPtrs fptrs action = go fptrs []
     go [] fptrs = action $ reverse fptrs
     go (a:as) fptrs = withForeignPtr a $ \fptr -> go as (fptr:fptrs) 
 
-create::Repository -> Maybe Ref -> Author -> Committer -> Message -> OidT Tree -> [OidT Commit] -> IO (OidT Commit) 
+create::WithAnyRepository repo => repo -> Maybe Ref -> Author -> Committer -> Message -> OidT Tree -> [OidT Commit] -> IO (OidT Commit) 
 create repo ref author committer message tree parents = do  
   alloca $ \result_oid_ptr -> do
-    withCRepository repo $ \repo_ptr -> do
+    withCAnyRepository repo $ \repo_ptr -> do
       withMaybeCString ref $ \ref_ptr -> do
         with_signature_ptr author $ \c'author_ptr -> do
           with_signature_ptr committer $ \ c'committer_ptr -> do

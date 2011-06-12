@@ -13,14 +13,14 @@ import Git.Result
 import Foreign.Storable
 import Foreign.Ptr
 
-write::Repository -> ByteString.ByteString -> IO Oid
-write repo contents = withCRepository repo $ \c'repo -> 
+write::WithAnyRepository repo => repo -> ByteString.ByteString -> IO Oid
+write repo contents = withCAnyRepository repo $ \c'repo -> 
   alloca $ \c'oid -> do
     useAsCStringLen contents $ \(c'buffer, size) -> do
       c'git_blob_create_frombuffer c'oid c'repo c'buffer (fromIntegral size) `wrap_git_result` fromCOid c'oid
 
-lookup::Repository -> Oid -> IO ByteString.ByteString
-lookup repo oid = withCRepository repo $ \c'repo -> 
+lookup::WithAnyRepository repo => repo -> Oid -> IO ByteString.ByteString
+lookup repo oid = withCAnyRepository repo $ \c'repo -> 
   withCOid oid $ \c'oid -> do
     alloca $ \p'blob ->  
       c'git_blob_lookup p'blob c'repo c'oid `wrap_git_result` (peek p'blob >>= go)

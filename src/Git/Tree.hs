@@ -22,10 +22,10 @@ import qualified Data.Map as Map
 
 data Tree = Tree { tree_ptr::ForeignPtr C'git_tree }
 
-lookup::Repository -> Oid -> IO Tree
+lookup::WithAnyRepository repo => repo -> Oid -> IO Tree
 lookup repo oid = lookup_wrapped_object repo oid Tree c'GIT_OBJ_TREE
 
-write::Repository -> Map.Map EntryName (Oid, Attributes) -> IO Oid
+write::WithAnyRepository repo => repo -> Map.Map EntryName (Oid, Attributes) -> IO Oid
 write repo paths = do
   builder <- Builder.create
   let build k (oid, attr) = TreeEntry k oid attr 

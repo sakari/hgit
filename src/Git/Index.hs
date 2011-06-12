@@ -9,7 +9,8 @@ module Git.Index (
   , write
   , Index
   , Time(..)
-  , Entry(..)    
+  , Entry(..)
+  , Stage
   ) where
 
 import qualified Data.ByteString as ByteString
@@ -58,6 +59,22 @@ add index entry = withCIndex index $ \c'index -> withCEntry entry $ \c'entry ->
 
 type Stage = Int
 
+{-| Add file under the repository 'workdir' to the index
+
+>>> repo <- Repository.init "addFile-repo"
+>>> index <- open repo
+
+If the file does not exist an exception is raised
+
+>>> addFile index (EntryName "abc") 1
+*** Exception: Error {error_code = -3, error_explanation = "Cannot read reference file 'packed-refs'"}
+
+The 'error_explanation' above is incorrect. Such is life. If the file exists it will be added to the index
+
+>>> Repository.writeFile repo (EntryName "abc") $ ByteString.singleton $ toEnum $ ord 'a'
+>>> addFile index (EntryName "abc") 1
+
+-}
 addFile::Index -> EntryName -> Stage -> IO ()
 addFile index name stage = withCIndex index $ \c'index ->
   withCString (entryName name) $ \c'name -> do 

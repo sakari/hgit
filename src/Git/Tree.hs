@@ -46,13 +46,13 @@ entries tree = withCTree tree $ \c'tree -> do
       go c'tree index = c'git_tree_entry_byindex c'tree (fromIntegral index) >>= fromCEntry
 
 entry::Tree -> EntryName -> IO (Maybe TreeEntry)
-entry tree EntryName { entryName } = withCTree tree $ \c'tree ->
-   withCString entryName $ \c'path -> do
+entry tree name  = withCTree tree $ \c'tree ->
+   withCString (entryToPath name) $ \c'path -> do
      c'entry <- c'git_tree_entry_byname c'tree c'path
      if c'entry == nullPtr then return Nothing
        else Just `fmap` fromCEntry c'entry
      
 fromCEntry::Ptr C'git_tree_entry -> IO TreeEntry
-fromCEntry c'entry = liftM3 TreeEntry (fmap EntryName $ c'git_tree_entry_name c'entry >>= peekCString) 
+fromCEntry c'entry = liftM3 TreeEntry (fmap unsafePathToEntry $ c'git_tree_entry_name c'entry >>= peekCString) 
                      (c'git_tree_entry_id c'entry >>= fromCOid)
                      (fmap fromIntegral $ c'git_tree_entry_attributes c'entry)

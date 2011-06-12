@@ -66,25 +66,25 @@ type Stage = Int
 
 If the file does not exist an exception is raised
 
->>> addFile index (EntryName "abc") 1
+>>> addFile index (unsafePathToEntry "abc") 1
 *** Exception: Error {error_code = -3, error_explanation = "Cannot read reference file 'packed-refs'"}
 
 The 'error_explanation' above is incorrect. Such is life. If the file exists it will be added to the index
 
->>> Repository.writeFile repo (EntryName "abc") $ ByteString.singleton $ toEnum $ ord 'a'
->>> addFile index (EntryName "abc") 1
+>>> Repository.writeFile repo (unsafePathToEntry "abc") $ ByteString.singleton $ toEnum $ ord 'a'
+>>> addFile index (unsafePathToEntry "abc") 1
 
 -}
 addFile::Index -> EntryName -> Stage -> IO ()
 addFile index name stage = withCIndex index $ \c'index ->
-  withCString (entryName name) $ \c'name -> do 
+  withCString (entryToPath name) $ \c'name -> do 
     c'git_index_add c'index c'name (fromIntegral stage) `wrap_git_result` return ()
 
 remove::Index -> EntryName -> IO ()
 remove index name = withCIndex index $ \c'index ->
-  withCString (entryName name) $ \c'name -> do
+  withCString (entryToPath name) $ \c'name -> do
     result <- c'git_index_find c'index c'name
-    if result < 0 then throwIO $ Error { error_explanation = "No entry in index with name: '" ++ entryName name ++ "'" 
+    if result < 0 then throwIO $ Error { error_explanation = "No entry in index with name: '" ++ entryToPath name ++ "'" 
                                        , error_code = 0
                                        }
       else c'git_index_remove c'index result `wrap_git_result` return ()
@@ -99,18 +99,18 @@ First create a repository and open the index
 
 If the entry is not present 'find' returns 'Nothing'
 
->>> Nothing <- find index $ EntryName "abc"
+>>> Nothing <- find index $ unsafePathToEntry "abc"
 
 Now if we 'addFile' the entry to index 'find' returns the 'Entry'    
 
->>> Repository.writeFile repo (EntryName "abc") $ ByteString.singleton $ toEnum $ ord 'a'     
->>> addFile index (EntryName "abc") 1
->>> Just e <- find index $ EntryName "abc"
+>>> Repository.writeFile repo (unsafePathToEntry "abc") $ ByteString.singleton $ toEnum $ ord 'a'     
+>>> addFile index (unsafePathToEntry "abc") 1
+>>> Just e <- find index $ unsafePathToEntry "abc"
     
 -} 
 
 find::Index -> EntryName -> IO (Maybe Entry)
-find index (EntryName path) = withCIndex index $ \ c'index -> withCString path $ \c'path -> do
+find index name  = withCIndex index $ \ c'index -> withCString (entryToPath name) $ \c'path -> do
   result <- c'git_index_find c'index c'path
   if result < 0 then return Nothing
     else do
@@ -147,7 +147,7 @@ fromCEntry c'entry = peek c'entry >>= go
   where 
     go (C'git_index_entry ctime mtime dev ino mode uid gid file_size c'oid flags flags_x c'path) = do 
       h'oid <- fromCOidStruct c'oid
-      h'path <- EntryName `fmap` peekCString c'path
+      h'path <- unsafePathToEntry `fmap` peekCString c'path
       return $ Entry (fromCIndexTime ctime) (fromCIndexTime mtime) (fromIntegral dev) 
         (fromIntegral ino) (fromIntegral mode) (fromIntegral uid) (fromIntegral gid) 
         (fromIntegral file_size) h'oid  h'path
@@ -164,7 +164,7 @@ withCEntry Entry { entry_ctime
                  , entry_oid
                  , entry_path
                  } c = 
-  withCString (entryName entry_path) $ \c'path -> do
+  withCString (entryToPath entry_path) $ \c'path -> do
     withCOid entry_oid $ \ p'oid -> do
       alloca $ \c'index -> do
         c'oid <- peek p'oid

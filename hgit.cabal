@@ -50,7 +50,8 @@ library
     Git.Oid,
     Git.Index,
     Git.Tree,
-    Git.TreeBuilder
+    Git.TreeBuilder,
+    Git.Types
   default-extensions: 
     NamedFieldPuns,
     ScopedTypeVariables

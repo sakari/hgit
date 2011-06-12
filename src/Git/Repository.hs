@@ -145,12 +145,12 @@ workdir repo = withCRepository repo $ \c'repo ->
 -- | Write 'ByteString' to repository work directory
 --
 -- >>> repo <- init "write-repo"
--- >>> writeFile repo (EntryName "bar") $ ByteString.singleton $ toEnum $ ord 'a'
+-- >>> writeFile repo (unsafePathToEntry "bar") $ ByteString.singleton $ toEnum $ ord 'a'
 -- >>> readFile $ "write-repo" </> "bar"
 -- "a"
 
 writeFile::Repository -> EntryName -> ByteString.ByteString -> IO ()
 writeFile repo name contents = do
   repoPath <- workdir repo
-  let absPath = repoPath </> entryName name
+  let absPath = repoPath </> entryToPath name
   absPath `ByteString.writeFile` contents 

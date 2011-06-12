@@ -27,8 +27,8 @@ withCTreeBuilder::TreeBuilder -> (Ptr C'git_treebuilder -> IO a) -> IO a
 withCTreeBuilder TreeBuilder { treeBuilder } = withForeignPtr treeBuilder
 
 remove::TreeBuilder -> EntryName -> IO ()
-remove treeBuilder EntryName { entryName } = withCTreeBuilder treeBuilder $ \c'builder ->
-  withCString entryName $ \c'entry -> 
+remove treeBuilder name  = withCTreeBuilder treeBuilder $ \c'builder ->
+  withCString (entryToPath name) $ \c'entry -> 
   c'git_treebuilder_remove c'builder c'entry `wrap_git_result` return ()
 
 create::IO TreeBuilder
@@ -39,7 +39,7 @@ create = alloca $ \ptr -> c'git_treebuilder_create ptr nullPtr `wrap_git_result`
 insert::TreeBuilder -> TreeEntry -> IO ()
 insert TreeBuilder { treeBuilder } TreeEntry { treeEntryName, treeEntryOid, treeEntryAttributes } = 
   withForeignPtr treeBuilder $ \c'builder -> do 
-    withCString (entryName treeEntryName) $ \c'path -> do
+    withCString (entryToPath treeEntryName) $ \c'path -> do
       withCOid treeEntryOid $ \c'oid -> do
         c'git_treebuilder_insert nullPtr c'builder c'path c'oid (fromIntegral treeEntryAttributes) `wrap_git_result` return ()
 

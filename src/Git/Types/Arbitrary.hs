@@ -46,8 +46,8 @@ instance Arbitrary Time where
   shrink (Time epoch offset) = (Time <$> pure epoch <*> shrink offset) ++ (Time <$> shrink epoch <*> pure offset)
 
 instance Arbitrary EntryName where
-  arbitrary = EntryName <$> listOf1 (elements $ validEntryChars)
-  shrink EntryName { entryName } = EntryName <$> filter (not . null) (filter isValidEntryChar `map` shrink entryName) 
+  arbitrary = unsafePathToEntry <$> listOf1 (elements $ validEntryChars)
+  shrink name = unsafePathToEntry <$> filter (not . null) (filter isValidEntryChar `map` shrink (entryToPath name)) 
       
 instance Arbitrary TreeEntry where 
   arbitrary = TreeEntry <$> arbitrary <*> arbitrary <*> arbitrary

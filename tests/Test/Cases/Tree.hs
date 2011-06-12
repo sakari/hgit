@@ -42,13 +42,13 @@ tests = testGroup "Test.Cases.Tree"
              
         , testProperty "Finding entry 'b' succeeds (https://github.com/libgit2/libgit2/issues/127)" $ with_repo $ \repo -> do
              let zeroOid = Oid.mkstr $ replicate 40 '0' 
-                 name = Types.EntryName "b"
+                 name = Types.unsafePathToEntry "b"
                  attrs = Types.Attributes 0
                  target = Types.TreeEntry name zeroOid attrs                 
                  directory = Types.Attributes 16384
                  haystack = Map.fromList [(name, (zeroOid, attrs)) 
-                                         , (Types.EntryName "ba", (zeroOid, directory))
-                                         , (Types.EntryName "a", (zeroOid, Types.Attributes 0))
+                                         , (Types.unsafePathToEntry "ba", (zeroOid, directory))
+                                         , (Types.unsafePathToEntry "a", (zeroOid, Types.Attributes 0))
                                          ]
              oid <- Tree.write repo haystack
              tree <- Tree.lookup repo oid
@@ -74,13 +74,13 @@ tests = testGroup "Test.Cases.Tree"
              
         , testProperty "Bug: Removing entry fails" $ with_repo $ \repo -> do
              let zeroOid = Oid.mkstr $ replicate 40 '0' 
-                 name = Types.EntryName "b"
+                 name = Types.unsafePathToEntry "b"
                  attrs = Types.Attributes 0
                  target = Types.TreeEntry name zeroOid attrs                 
                  directory = Types.Attributes 16384
                  haystack = [ Types.TreeEntry name zeroOid attrs 
-                            , Types.TreeEntry (Types.EntryName "ba") zeroOid  directory
-                            , Types.TreeEntry (Types.EntryName "a") zeroOid (Types.Attributes 0)
+                            , Types.TreeEntry (Types.unsafePathToEntry "ba") zeroOid  directory
+                            , Types.TreeEntry (Types.unsafePathToEntry "a") zeroOid (Types.Attributes 0)
                             ]
              builder <- Builder.create
              Builder.insert builder `mapM_` haystack

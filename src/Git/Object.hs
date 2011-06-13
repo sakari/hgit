@@ -9,6 +9,7 @@ import Git.Result
 import Git.Repository
 import Git.Internal.Repository
 import Git.Oid
+import Git.Internal.Oid
 import Control.Monad.Instances
 
 data Object = Object { object_ptr::ForeignPtr C'git_object }

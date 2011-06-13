@@ -7,6 +7,7 @@ module Git.TreeBuilder (TreeBuilder
                        , remove
                        ) where
 import Git.Oid
+import Git.Internal.Oid
 import Git.Repository
 import Git.Result
 import Git.Types

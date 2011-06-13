@@ -14,6 +14,7 @@ import Git.Object
 import Git.Repository hiding (init)
 import Git.Internal.Repository
 import Git.Oid
+import Git.Internal.Oid
 import Git.Result
 import qualified Git.TreeBuilder as Builder
 import Git.Types 

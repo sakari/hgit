@@ -28,6 +28,7 @@ import Data.Word
 import Data.Int
 import Data.Char
 import Git.Oid
+import Git.Internal.Oid
 import Git.Types
 import Git.Error
 import System.FilePath

@@ -10,7 +10,7 @@ import Git.Internal.Repository
 import Prelude hiding (lookup)
 import Data.ByteString as ByteString
 import Foreign.Marshal.Alloc
-import Git.Result
+import Git.Internal.Result
 import Foreign.Storable
 import Foreign.Ptr
 

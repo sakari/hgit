@@ -13,9 +13,8 @@ import Foreign.Ptr
 import Git.Object
 import Git.Repository hiding (init)
 import Git.Internal.Repository
-import Git.Oid
 import Git.Internal.Oid
-import Git.Result
+import Git.Internal.Result
 import qualified Git.TreeBuilder as Builder
 import Git.Types 
 import Git.Internal.Index hiding (write)

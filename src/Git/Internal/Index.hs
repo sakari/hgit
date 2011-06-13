@@ -23,11 +23,10 @@ import Foreign.Ptr
 import Foreign.Marshal.Alloc
 import Foreign.Storable
 import Foreign.C.String
-import Git.Result
+import Git.Internal.Result
 import Data.Word
 import Data.Int
 import Data.Char
-import Git.Oid
 import Git.Internal.Oid
 import Git.Types
 import Git.Error

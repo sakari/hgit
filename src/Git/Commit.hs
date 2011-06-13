@@ -20,7 +20,7 @@ import Foreign.C.String
 import Control.Monad
 import Data.Word
 
-import Git.Result
+import Git.Internal.Result
 import Git.Repository
 import Git.Internal.Repository
 import Git.Oid

@@ -1,4 +1,4 @@
-module Git.Result (wrap_git_result) where
+module Git.Internal.Result (wrap_git_result) where
 
 import Git.Error
 import Bindings.Libgit2

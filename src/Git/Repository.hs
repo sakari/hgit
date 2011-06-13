@@ -25,7 +25,7 @@ import Foreign.Storable
 import Foreign.Ptr
 import Bindings.Libgit2
 import Control.Monad
-import Git.Result
+import Git.Internal.Result
 import Git.Internal.Repository
 import Git.Types
 import qualified Data.ByteString as ByteString

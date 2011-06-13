@@ -5,7 +5,7 @@ import Foreign.Ptr
 import Foreign.Concurrent
 import Foreign.Storable 
 import Foreign.Marshal.Alloc
-import Git.Result
+import Git.Internal.Result
 import Git.Repository
 import Git.Internal.Repository
 import Git.Oid

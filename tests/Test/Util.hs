@@ -1,6 +1,5 @@
 module Test.Util where
 import Git.Repository
-import Git.Result
 import Git.Error
 import Git.Types.Arbitrary
 import Git.Types

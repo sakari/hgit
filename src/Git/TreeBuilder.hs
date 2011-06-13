@@ -10,6 +10,7 @@ import Git.Oid
 import Git.Repository
 import Git.Result
 import Git.Types
+import Git.Internal.Repository
 
 import Bindings.Libgit2.Tree
 import Bindings.Libgit2.Types

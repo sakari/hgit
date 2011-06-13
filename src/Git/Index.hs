@@ -16,6 +16,7 @@ module Git.Index (
 
 import qualified Data.ByteString as ByteString
 import qualified Git.Repository as Repository
+import Git.Internal.Repository
 import Foreign.ForeignPtr hiding (newForeignPtr)
 import Foreign.Concurrent
 import Foreign.Ptr
@@ -121,8 +122,8 @@ find index name  = withCIndex index $ \ c'index -> withCString (entryToPath name
 
 -- | Read index from disk
     
-open::Repository.Repository -> IO Index
-open repo = Repository.withCFRepository repo $ \f'repo -> 
+open::Repository -> IO Index
+open repo = withCFRepository repo $ \f'repo -> 
   withForeignPtr f'repo $ \c'repo -> alloca $ \c'index ->
     c'git_index_open_inrepo c'index c'repo `wrap_git_result` (peek c'index >>= fromCIndex f'repo)
 

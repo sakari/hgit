@@ -7,6 +7,7 @@ import Foreign.Storable
 import Foreign.Marshal.Alloc
 import Git.Result
 import Git.Repository
+import Git.Internal.Repository
 import Git.Oid
 import Control.Monad.Instances
 

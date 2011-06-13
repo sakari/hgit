@@ -22,6 +22,7 @@ import Data.Word
 
 import Git.Result
 import Git.Repository
+import Git.Internal.Repository
 import Git.Oid
 import Git.Tree hiding (lookup)
 import Git.Object

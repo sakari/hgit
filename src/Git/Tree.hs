@@ -12,6 +12,7 @@ import Foreign.ForeignPtr
 import Foreign.Ptr
 import Git.Object
 import Git.Repository hiding (init)
+import Git.Internal.Repository
 import Git.Oid
 import Git.Result
 import qualified Git.TreeBuilder as Builder

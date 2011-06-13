@@ -14,10 +14,13 @@ module Git.Repository (init
                       , AnyRepository
                       , WithAnyRepository
                       , withCAnyRepository
+                      , withCFAnyRepository
                       , anyRepository
                       , writeFile
                       , withCRepository
                       , withCBareRepository
+                      , withCFRepository
+                      , withCFBareRepository
                       , workdir) where
 import Foreign.ForeignPtr hiding (newForeignPtr)
 import Foreign.Concurrent
@@ -42,27 +45,39 @@ data BareRepository = BareRepository { bare_repository_ptr::ForeignPtr C'git_rep
 data AnyRepository = AnyRepository { any_repository_ptr::ForeignPtr C'git_repository }
 
 class WithAnyRepository repo where
+  withCFAnyRepository::repo -> (ForeignPtr C'git_repository -> IO a) -> IO a
   withCAnyRepository::repo -> (Ptr C'git_repository -> IO a) -> IO a
   anyRepository::repo -> AnyRepository
+  
+  withCAnyRepository repo c = withCFAnyRepository repo $ \f'repo -> 
+    withForeignPtr f'repo c
 
 instance WithAnyRepository AnyRepository where
-  withCAnyRepository AnyRepository { any_repository_ptr } c = withForeignPtr any_repository_ptr c
+  withCFAnyRepository AnyRepository { any_repository_ptr } c = c any_repository_ptr
   anyRepository = id
   
 instance WithAnyRepository Repository where
-  withCAnyRepository = withCRepository
+  withCFAnyRepository = withCFRepository
   anyRepository = AnyRepository . repository_ptr
 
 instance WithAnyRepository BareRepository where
-  withCAnyRepository = withCBareRepository
+  withCFAnyRepository = withCFBareRepository
   anyRepository = AnyRepository . bare_repository_ptr
 
+withCFBareRepository::BareRepository -> (ForeignPtr C'git_repository -> IO a) -> IO a
+withCFBareRepository BareRepository { bare_repository_ptr } c = c bare_repository_ptr
+
 withCBareRepository::BareRepository -> (Ptr C'git_repository -> IO a) -> IO a
-withCBareRepository BareRepository { bare_repository_ptr } c = withForeignPtr bare_repository_ptr c
+withCBareRepository repo c = withCFBareRepository repo $ \f'repo ->
+  withForeignPtr f'repo c
+
+withCFRepository::Repository -> (ForeignPtr C'git_repository -> IO a) -> IO a
+withCFRepository Repository { repository_ptr } c = c repository_ptr
 
 withCRepository::Repository -> (Ptr C'git_repository -> IO a) -> IO a
-withCRepository Repository { repository_ptr } c = withForeignPtr repository_ptr c
-
+withCRepository repo c = withCFRepository repo $ \f'repo ->
+  withForeignPtr f'repo c
+  
 newRepository::FilePath -> (ForeignPtr C'git_repository -> IO c) -> (Ptr (Ptr C'git_repository) -> CString -> IO CInt) -> IO c
 newRepository path con constructor = alloca $ \ptr_ptr -> withCString path $ \c'path ->
   constructor ptr_ptr c'path `wrap_git_result` wrap ptr_ptr

@@ -29,14 +29,12 @@ import System.IO.Unsafe
 import Bindings.Libgit2
 import Prelude hiding (lookup)
 
-data Commit = Commit { commit_ptr::ForeignPtr C'git_commit 
-                     , commit_repo::AnyRepository
-                     }
+data Commit = Commit { commit_ptr::ForeignPtr C'git_commit }
 
 lookup::WithAnyRepository repo => repo -> Oid -> IO Commit
 lookup repo oid = lookup_wrapped_object repo oid wrap c'GIT_OBJ_COMMIT
   where
-    wrap fptr = Commit { commit_ptr = fptr, commit_repo = anyRepository repo}
+    wrap fptr = Commit { commit_ptr = fptr }
   
 type Ref = String
 type Message = String

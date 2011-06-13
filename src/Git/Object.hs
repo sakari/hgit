@@ -12,18 +12,23 @@ import Control.Monad.Instances
 
 data Object = Object { object_ptr::ForeignPtr C'git_object }
 
+-- | Look up objects based on the git type and wrap the returned as 'b'
+
 lookup_wrapped_object::WithAnyRepository repo => repo -> Oid -> (ForeignPtr a -> b) -> C'git_otype -> IO b 
 lookup_wrapped_object repo oid wrapper otype = 
   fmap (wrapper . castForeignPtr . object_ptr) $ 
   lookup_any repo oid otype
 
+-- | Look up objects 
+
 lookup_any::WithAnyRepository repo => repo -> Oid -> C'git_otype -> IO Object
 lookup_any repo oid otype = do
   alloca $ \ptr -> do
-    withCAnyRepository repo $ \repo_ptr -> do
-      withCOid oid $ \oid_ptr -> do
-        c'git_object_lookup ptr repo_ptr oid_ptr otype `wrap_git_result` wrap ptr repo_ptr oid_ptr
+    withCFAnyRepository repo $ \f'repo -> do 
+      withForeignPtr f'repo $ \c'repo -> do
+        withCOid oid $ \oid_ptr -> do
+          c'git_object_lookup ptr c'repo oid_ptr otype `wrap_git_result` wrap ptr f'repo oid_ptr
   where
-    wrap ptr repo_ptr oid_ptr = do
+    wrap ptr f'repo oid_ptr = do
       p <- peek ptr
-      fmap Object $ newForeignPtr p $ c'git_object_close p
+      fmap Object $ newForeignPtr p $ c'git_object_close p >> touchForeignPtr f'repo

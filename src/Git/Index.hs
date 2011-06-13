@@ -121,17 +121,17 @@ find index name  = withCIndex index $ \ c'index -> withCString (entryToPath name
 -- | Read index from disk
     
 open::Repository.Repository -> IO Index
-open repo = Repository.withCRepository repo $ \c'repo -> 
-  alloca $ \c'index -> do 
-    c'git_index_open_inrepo c'index c'repo `wrap_git_result` (peek c'index >>= fromCIndex)
+open repo = Repository.withCFRepository repo $ \f'repo -> 
+  withForeignPtr f'repo $ \c'repo -> alloca $ \c'index ->
+    c'git_index_open_inrepo c'index c'repo `wrap_git_result` (peek c'index >>= fromCIndex f'repo)
 
 -- | Write in-memory index to disk
     
 write::Index -> IO ()
 write index = withCIndex index $ flip wrap_git_result (return ()) . c'git_index_write 
 
-fromCIndex::Ptr C'git_index -> IO Index
-fromCIndex c'index = fmap Index $ newForeignPtr c'index $ c'git_index_free c'index 
+fromCIndex::ForeignPtr C'git_repository -> Ptr C'git_index -> IO Index
+fromCIndex c'repo c'index = fmap Index $ newForeignPtr c'index $ c'git_index_free c'index >> touchForeignPtr c'repo
 
 withCIndex::Index -> (Ptr C'git_index -> IO a) -> IO a
 withCIndex Index { index } c = withForeignPtr index c

@@ -157,12 +157,14 @@ workdir::Repository -> IO FilePath
 workdir repo = withCRepository repo $ \c'repo -> 
   c'git_repository_workdir c'repo >>= (fmap Prelude.init . peekCString)
 
--- | Write 'ByteString' to repository work directory
---
--- >>> repo <- init "write-repo"
--- >>> writeFile repo (unsafePathToEntry "bar") $ ByteString.singleton $ toEnum $ ord 'a'
--- >>> readFile $ "write-repo" </> "bar"
--- "a"
+-- | Write 'ByteString' to repository 'workdir'
+-- The following holds between 'workdir' and 'writeFile'
+-- 
+-- >>> repo <- init "writeFile-repo"
+-- >>> writeFile repo (unsafePathToEntry "bar") ByteString.empty
+-- >>> wd <- workdir repo
+-- >>> elem "bar" `fmap` getDirectoryContents wd
+-- True
 
 writeFile::Repository -> EntryName -> ByteString.ByteString -> IO ()
 writeFile repo name contents = do

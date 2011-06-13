@@ -11,6 +11,7 @@ module Git.Index (
   , Time(..)
   , Entry(..)
   , Stage
+  , withCIndex
   ) where
 
 import qualified Data.ByteString as ByteString

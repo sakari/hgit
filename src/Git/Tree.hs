@@ -1,7 +1,9 @@
 {-# LANGUAGE NamedFieldPuns #-}
 
 module Git.Tree (Tree
-                , lookup, write
+                , lookup
+                , write
+                , fromIndex
                 , entry
                 , entries
                 ) where
@@ -13,10 +15,12 @@ import Git.Repository hiding (init)
 import Git.Oid
 import Git.Result
 import qualified Git.TreeBuilder as Builder
-import Git.Types
+import Git.Types 
+import Git.Index hiding (write)
 import Control.Monad
 import Control.Applicative
 import Foreign.C.String
+import Foreign.Marshal.Alloc
 import Prelude hiding (lookup)
 import qualified Data.Map as Map
 
@@ -25,6 +29,13 @@ data Tree = Tree { tree_ptr::ForeignPtr C'git_tree }
 lookup::WithAnyRepository repo => repo -> Oid -> IO Tree
 lookup repo oid = lookup_wrapped_object repo oid Tree c'GIT_OBJ_TREE
 
+-- | Write index as a tree to the object store
+
+fromIndex::Index -> IO Oid
+fromIndex index = withCIndex index $ \c'index ->
+  alloca $ \c'oid -> do 
+    c'git_tree_create_fromindex c'oid c'index `wrap_git_result` fromCOid c'oid 
+  
 write::WithAnyRepository repo => repo -> Map.Map EntryName (Oid, Attributes) -> IO Oid
 write repo paths = do
   builder <- Builder.create

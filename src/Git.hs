@@ -43,6 +43,7 @@ module Git (
  , module Git.Index
  , module Git.Tree
  , module Git.Oid
+ , module Git.TreeBuilder
  )
       where
 import qualified Git.Types
@@ -51,3 +52,4 @@ import qualified Git.Commit
 import qualified Git.Index
 import qualified Git.Tree
 import qualified Git.Oid
+import qualified Git.TreeBuilder

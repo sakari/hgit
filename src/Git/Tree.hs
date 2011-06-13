@@ -18,7 +18,7 @@ import Git.Internal.Oid
 import Git.Result
 import qualified Git.TreeBuilder as Builder
 import Git.Types 
-import Git.Index hiding (write)
+import Git.Internal.Index hiding (write)
 import Control.Monad
 import Control.Applicative
 import Foreign.C.String

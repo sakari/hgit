@@ -3,8 +3,10 @@ import Test.Framework
 import Test.Framework.DocTest
 import System.IO.Temp
 import System.Directory
+import Control.Exception
 
 main = withTempDirectory "." "doctest" $ \tmp -> do
+  cwd <- getCurrentDirectory
   setCurrentDirectory tmp
-  docTest  ["../src/Git.hs"] ["-i../src"] >>= defaultMain . return
-  
+  tests <- docTest  ["../src/Git.hs"] ["-i../src"]
+  defaultMain [tests] `finally` setCurrentDirectory cwd

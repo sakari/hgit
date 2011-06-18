@@ -31,6 +31,23 @@ test-suite git_test
     bytestring,
     filepath
 
+test-suite doctest
+  main-is: MainDocTest.hs
+  default-language: Haskell98
+  type: exitcode-stdio-1.0
+  hs-source-dirs: tests src
+  build-depends:
+    base >= 4,
+    filepath >= 1.2.0.0,
+    test-framework,
+    test-framework-doctest,
+    hlibgit2,
+    directory,
+    temporary,
+    containers,
+    bytestring,
+    filepath
+
 library
   default-language: Haskell98
   ghc-options: -Wall -Werror

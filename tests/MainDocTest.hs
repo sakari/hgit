@@ -5,6 +5,7 @@ import System.IO.Temp
 import System.Directory
 import Control.Exception
 
+main::IO ()
 main = withTempDirectory "." "doctest" $ \tmp -> do
   cwd <- getCurrentDirectory
   setCurrentDirectory tmp

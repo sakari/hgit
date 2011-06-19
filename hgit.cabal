@@ -36,7 +36,7 @@ test-suite doctest
   default-language: Haskell98
   type: exitcode-stdio-1.0
   hs-source-dirs: tests src
-  ghc-options: -rtsopts -threaded
+  ghc-options: -Wall -Werror -rtsopts -threaded
   build-depends:
     base >= 4,
     filepath >= 1.2.0.0,

@@ -16,11 +16,9 @@ module Git.Repository (init
                       , BareRepository
                       , AnyRepository
                       ) where
-import Foreign.ForeignPtr hiding (newForeignPtr)
-import Foreign.Concurrent
+
 import Foreign.Marshal.Alloc
 import Foreign.C.String
-import Foreign.C.Types
 import Foreign.Storable
 import Foreign.Ptr
 import Bindings.Libgit2
@@ -32,13 +30,11 @@ import qualified Data.ByteString as ByteString
 import Prelude hiding (init, writeFile)
 import qualified Prelude
 import System.FilePath
-import System.Directory
-import Data.Char
 
 -- | Initialize a new non-bare repository at given path
---
+-- 
 -- >>> init "init-repo"
--- >>> getDirectoryContents "init-repo" >>= putStr . unlines
+-- >>> System.Directory.getDirectoryContents "init-repo" >>= putStr . unlines
 -- .
 -- .git
 -- ..
@@ -50,7 +46,7 @@ init path = alloca $ \c'repo -> withCString path $ \c'path -> do
 -- | Initialize a bare repository at given path
 -- 
 -- >>> initBare "init-bare"
--- >>> getDirectoryContents "init-bare" >>= putStr . unlines
+-- >>> System.Directory.getDirectoryContents "init-bare" >>= putStr . unlines
 -- .
 -- refs
 -- objects
@@ -62,20 +58,20 @@ initBare path = alloca $ \c'repo -> withCString path $ \c'path -> do
   c'git_repository_init c'repo c'path 1 `wrap_git_result` peek c'repo >>= fromCBareRepository
 
 class Repo a where
-  bare::Ptr C'git_repository -> IO (Maybe a)
-  repo::Ptr C'git_repository -> IO (Maybe a)
+  toBare::Ptr C'git_repository -> IO (Maybe a)
+  toRepo::Ptr C'git_repository -> IO (Maybe a)
 
 instance Repo BareRepository where
-  bare = fmap Just . fromCBareRepository
-  repo = const $ return Nothing
+  toBare = fmap Just . fromCBareRepository
+  toRepo = const $ return Nothing
 
 instance Repo Repository where
-  bare = const $ return Nothing
-  repo = fmap Just . fromCRepository
+  toBare = const $ return Nothing
+  toRepo = fmap Just . fromCRepository
   
 instance Repo AnyRepository where  
-  bare = fmap Just . fromCAnyRepository
-  repo = fmap Just . fromCAnyRepository
+  toBare = fmap Just . fromCAnyRepository
+  toRepo = fmap Just . fromCAnyRepository
   
 -- | Open an existing repository
 --  
@@ -97,8 +93,8 @@ open path = alloca $ \c'repo -> do
   where
     go c'repo = do
       r <- (nullPtr == ) `fmap` c'git_repository_workdir c'repo
-      if r then bare c'repo 
-           else repo c'repo
+      if r then toBare c'repo 
+           else toRepo c'repo
       
 openAny::FilePath -> IO AnyRepository
 openAny path = alloca $ \c'repo -> do
@@ -117,7 +113,7 @@ workdir repo = withCRepository repo $ \c'repo ->
 -- >>> repo <- init "writeFile-repo"
 -- >>> writeFile repo (unsafePathToEntry "bar") ByteString.empty
 -- >>> wd <- workdir repo
--- >>> elem "bar" `fmap` getDirectoryContents wd
+-- >>> elem "bar" `fmap` System.Directory.getDirectoryContents wd
 -- True
 
 writeFile::Repository -> EntryName -> ByteString.ByteString -> IO ()

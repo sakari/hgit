@@ -7,11 +7,10 @@ import qualified Git.Oid as Oid
 import qualified Git.Tree as Tree
 import qualified Git.Types as Types
 import qualified Git.TreeBuilder as Builder
-import Control.Arrow
 import qualified Data.Map as Map
 import Data.List (sort)
-import System.Posix.Types
 
+tests::Test
 tests = testGroup "Test.Cases.Tree" 
         [ 
           testProperty "lookup non existing tree" $ \oid -> 
@@ -22,7 +21,7 @@ tests = testGroup "Test.Cases.Tree"
            with_repo $ \repo -> do
              let tree = Map.fromList paths
              storedOid <- Tree.write repo tree
-             foundTree <- Tree.lookup repo storedOid
+             _ <- Tree.lookup repo storedOid
              return True
           
         , testProperty "return Nothing if no entry with the given name" $ \path -> withStoredTree $ \paths tree -> do
@@ -31,7 +30,7 @@ tests = testGroup "Test.Cases.Tree"
              
         , testProperty "get entry by name" $ \path entryOid entryAttr restOfPaths -> do  
              let allPaths = restOfPaths ++ [(path, (entryOid, entryAttr))]
-             flip withStoredTree allPaths $ \paths tree -> do
+             flip withStoredTree allPaths $ \_ tree -> do
                entry <- Tree.entry tree path
                (Just $ Types.TreeEntry path entryOid entryAttr) `assertEqual` entry 
         
@@ -55,9 +54,9 @@ tests = testGroup "Test.Cases.Tree"
              entry <- Tree.entry tree name
              Just target `assertEqual` entry
                      
-        , testProperty "removing non existing entry fails" $ \name entries -> with_repo $ \repo -> do
+        , testProperty "removing non existing entry fails" $ \name entries -> with_repo $ \_ -> do
              builder <- Builder.create
-             mapM (Builder.insert builder) $ filter ((name /=) . Types.treeEntryName) entries
+             mapM_ (Builder.insert builder) $ filter ((name /=) . Types.treeEntryName) entries
              fails $ Builder.remove builder name
 
         , testProperty "remove entry from treebuilder" $ \entries_l remove entries_r -> with_repo $ \repo -> do
@@ -72,11 +71,10 @@ tests = testGroup "Test.Cases.Tree"
              entry <- Tree.entry tree name
              Nothing `assertEqual` entry
              
-        , testProperty "Bug: Removing entry fails" $ with_repo $ \repo -> do
+        , testProperty "Bug: Removing entry fails" $ with_repo $ \_ -> do
              let zeroOid = Oid.mkstr $ replicate 40 '0' 
                  name = Types.unsafePathToEntry "b"
                  attrs = Types.Attributes 0
-                 target = Types.TreeEntry name zeroOid attrs                 
                  directory = Types.Attributes 16384
                  haystack = [ Types.TreeEntry name zeroOid attrs 
                             , Types.TreeEntry (Types.unsafePathToEntry "ba") zeroOid  directory

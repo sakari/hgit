@@ -5,6 +5,7 @@ import Test.Framework.Providers.QuickCheck2
 import Test.Util
 import qualified Git.Blob as Blob
 
+tests::Test
 tests = testGroup "Test.Cases.Blob" 
         [ testProperty "lookup non existing blob" $ \oid -> with_repo $ \repo -> do
              fails $ Blob.lookup repo oid
@@ -18,7 +19,7 @@ tests = testGroup "Test.Cases.Blob"
              oid <- Blob.write repo contents
              oid' <- Blob.write repo contents
              blob <- Blob.lookup repo oid
-             assertEqual oid oid'
+             _ <- assertEqual oid oid'
              assertEqual contents blob
         
         , testProperty "blob is found after writing any other blob" $ 

@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -w #-}
 
 {-| Git for Haskell on top of a shallow wrapper ( "Bindings.Libgit2" ) for libgit2.
 
@@ -36,16 +37,7 @@ Using the returned @commitOid@ we can retrieve the commit again
 "tester"
 -}
 
-module Git ( 
- module Git.Types
- , module Git.Repository
- , module Git.Commit
- , module Git.Index
- , module Git.Tree
- , module Git.Oid
- , module Git.TreeBuilder
- )
-      where
+module Git where
 import qualified Git.Types
 import qualified Git.Repository
 import qualified Git.Commit

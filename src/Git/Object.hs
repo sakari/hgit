@@ -1,16 +1,13 @@
 module Git.Object where
 import Bindings.Libgit2
 import Foreign.ForeignPtr hiding (newForeignPtr)
-import Foreign.Ptr
 import Foreign.Concurrent
 import Foreign.Storable 
 import Foreign.Marshal.Alloc
 import Git.Internal.Result
-import Git.Repository
 import Git.Internal.Repository
 import Git.Oid
 import Git.Internal.Oid
-import Control.Monad.Instances
 
 data Object = Object { object_ptr::ForeignPtr C'git_object }
 
@@ -29,8 +26,8 @@ lookup_any repo oid otype = do
     withCFAnyRepository repo $ \f'repo -> do 
       withForeignPtr f'repo $ \c'repo -> do
         withCOid oid $ \oid_ptr -> do
-          c'git_object_lookup ptr c'repo oid_ptr otype `wrap_git_result` wrap ptr f'repo oid_ptr
+          c'git_object_lookup ptr c'repo oid_ptr otype `wrap_git_result` wrap ptr f'repo
   where
-    wrap ptr f'repo oid_ptr = do
+    wrap ptr f'repo = do
       p <- peek ptr
       fmap Object $ newForeignPtr p $ c'git_object_close p >> touchForeignPtr f'repo

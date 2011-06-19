@@ -5,7 +5,6 @@ module Git.Blob (
 
 import Bindings.Libgit2
 import Git.Internal.Oid
-import Git.Repository
 import Git.Internal.Repository
 import Prelude hiding (lookup)
 import Data.ByteString as ByteString

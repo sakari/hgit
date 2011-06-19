@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -fno-warn-orphans #-}
 {-# LANGUAGE NamedFieldPuns, TypeSynonymInstances #-}
 
 module Git.Types.Arbitrary where
@@ -5,12 +6,10 @@ import Control.Applicative
 
 import Git.Oid
 import Git.Commit
-import Git.Tree
 import Git.Types
 import qualified Git.Index as Index
 
 import Test.QuickCheck hiding (Result)
-import Test.QuickCheck.Property hiding (Result)
 import Data.Char
 import qualified Data.ByteString as ByteString
 import qualified Data.Set as Set
@@ -27,13 +26,14 @@ instance Arbitrary TimeOffset where
   arbitrary = arbitrarySizedBoundedIntegral
   shrink (TimeOffset t) = filter inBounds $ map TimeOffset $ shrink t 
     where
-      inBounds t = minBound <= t && t <= maxBound 
+      inBounds value = minBound <= value && value <= maxBound 
       
 instance Arbitrary Signature where
   arbitrary = Signature <$> arbitraryString <*> arbitraryString <*> arbitrary
     where
       arbitraryString = listOf1 $ elements ['a'..'z']
-  shrink (Signature author committer time) = Signature author committer `map` shrink time
+  shrink Signature { signature_author,  signature_email,  signature_time } = 
+    Signature signature_author signature_email `map` shrink signature_time
 
 instance Arbitrary Epoch where
   arbitrary = arbitrarySizedBoundedIntegral

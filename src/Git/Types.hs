@@ -70,7 +70,7 @@ contract p = joinPath $ unstack $ foldr go (0, []) $ splitDirectories p
     unstack (stack, accum) = replicate stack ".." ++ accum
     go ".." (stack, accum) = (stack + 1, accum)
     go "." a = a
-    go a (stack, accum) | stack > 0 = (stack - 1, accum)
+    go _ (stack, accum) | stack > 0 = (stack - 1, accum)
     go a (stack, accum) = (stack, a:accum)
 
 -- | Unsafe version of 'pathToEntry'

@@ -11,7 +11,6 @@ import Bindings.Libgit2
 import Foreign.ForeignPtr
 import Foreign.Ptr
 import Git.Object
-import Git.Repository hiding (init)
 import Git.Internal.Repository
 import Git.Internal.Oid
 import Git.Internal.Result
@@ -19,7 +18,6 @@ import qualified Git.TreeBuilder as Builder
 import Git.Types 
 import Git.Internal.Index hiding (write)
 import Control.Monad
-import Control.Applicative
 import Foreign.C.String
 import Foreign.Marshal.Alloc
 import Prelude hiding (lookup)
@@ -47,6 +45,7 @@ write repo paths = do
 withCTree::Tree -> (Ptr C'git_tree -> IO a) -> IO a
 withCTree Tree { tree_ptr } c = withForeignPtr tree_ptr c
 
+excludeUpperBound::[a] -> [a]
 excludeUpperBound [] = []
 excludeUpperBound a = init a
 

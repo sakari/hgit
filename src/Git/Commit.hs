@@ -9,7 +9,6 @@ module Git.Commit (Commit, Time(..), TimeOffset(..), Signature(..), Epoch(..)
                   , committer
                   ) where
 import Foreign.ForeignPtr hiding (newForeignPtr)
-import Foreign.Concurrent
 import Foreign.Ptr
 import Foreign.Marshal.Alloc
 import Foreign.Marshal.Array
@@ -18,10 +17,8 @@ import Foreign.Storable
 import Foreign.C.String
 
 import Control.Monad
-import Data.Word
 
 import Git.Internal.Result
-import Git.Repository
 import Git.Internal.Repository
 import Git.Oid
 import Git.Internal.Oid
@@ -78,24 +75,18 @@ with_signature_ptr sig action = with_signature sig $ \c'sig -> with c'sig action
 withMaybeCString::Maybe String -> (CString -> IO a) -> IO a
 withMaybeCString string action = maybe (action nullPtr) (flip withCString action) string
 
-withForeignPtrs::[ForeignPtr a] -> ([Ptr a] -> IO b) -> IO b
-withForeignPtrs fptrs action = go fptrs [] 
-  where
-    go [] fptrs = action $ reverse fptrs
-    go (a:as) fptrs = withForeignPtr a $ \fptr -> go as (fptr:fptrs) 
-
 create::WithAnyRepository repo => repo -> Maybe Ref -> Author -> Committer -> Message -> OidT Tree -> [OidT Commit] -> IO (OidT Commit) 
-create repo ref author committer message tree parents = do  
+create repo ref author' committer' message tree' parents' = do  
   alloca $ \result_oid_ptr -> do
     withCAnyRepository repo $ \repo_ptr -> do
       withMaybeCString ref $ \ref_ptr -> do
-        with_signature_ptr author $ \c'author_ptr -> do
-          with_signature_ptr committer $ \ c'committer_ptr -> do
+        with_signature_ptr author' $ \c'author_ptr -> do
+          with_signature_ptr committer' $ \ c'committer_ptr -> do
             withCString message $ \message_ptr -> do
-              withCOid tree $ \tree_ptr -> do
-                withCOids parents $ \parent_oid_ptrs -> do
+              withCOid tree' $ \tree_ptr -> do
+                withCOids parents' $ \parent_oid_ptrs -> do
                   withArray parent_oid_ptrs $ \parent_oid_array -> do
-                    c'git_commit_create result_oid_ptr repo_ptr ref_ptr c'author_ptr c'committer_ptr message_ptr tree_ptr (fromIntegral $ length parents) parent_oid_array `wrap_git_result` fromCOid result_oid_ptr
+                    c'git_commit_create result_oid_ptr repo_ptr ref_ptr c'author_ptr c'committer_ptr message_ptr tree_ptr (fromIntegral $ length parents') parent_oid_array `wrap_git_result` fromCOid result_oid_ptr
 
 fromCTime::C'git_time -> Time
 fromCTime (C'git_time stamp offset) = Time (fromIntegral $ fromEnum stamp) (fromIntegral offset)

@@ -1,12 +1,8 @@
 module Test.Util where
 import Git.Repository
 import Git.Error
-import Git.Types.Arbitrary
-import Git.Types
-
+import Git.Types.Arbitrary()
 import System.IO.Temp
-import System.Directory
-
 import Control.Exception
 import Prelude hiding (init, catch)
 

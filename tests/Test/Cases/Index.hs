@@ -10,13 +10,13 @@ import qualified Git.Index as Index
 import qualified Git.Blob as Blob
 import qualified Git.Types as Types
 import qualified Git.Repository as Repository
-import qualified Data.ByteString as Bytestring
 
+tests::Test
 tests = testGroup "Test.Cases.Index" 
         [
           testProperty "lookup non existing index entry" $ \before path -> 
-           not (before `addsPath` path) ==> withIndex before $ \index -> do
-             Index.find index path >>= assertEqual Nothing
+           not (before `addsPath` path) ==> withIndex before $ \index ->
+           Index.find index path >>= assertEqual Nothing
         
         , testProperty "lookup an existing index entry" $ \before entry -> withIndex before $ \index -> do 
              Index.add index entry
@@ -30,7 +30,7 @@ tests = testGroup "Test.Cases.Index"
              blob <- Blob.lookup repo (Index.entry_oid found)
              assertEqual blob contents             
           
-        , testProperty "remove a file from index" $ \before path -> withIndexAndRepo before $ \index repo -> do
+        , testProperty "remove a file from index" $ \before path -> withIndex before $ \index -> do
              if before `addsPath` path then success $ Index.remove index path 
                else fails $ Index.remove index path
                
@@ -41,6 +41,7 @@ tests = testGroup "Test.Cases.Index"
            not $ (ops ++ [Remove name]) `addsPath` name
         ]
 
+addsPath::[IndexOp] -> Types.EntryName -> Bool
 addsPath ops = maybe False adds . lastOccurrenceOf
   where
     adds Add {} = True
@@ -59,15 +60,18 @@ instance Arbitrary IndexOp where
   shrink (Add name contents) = tail $ Add <$> (name:shrink name) <*> (contents:shrink contents)
   shrink (Remove name) = Remove <$> shrink name
 
+runIndexOp::Repository.Repository -> Index.Index -> IndexOp -> IO ()
 runIndexOp repo index (Add name contents ) = do
   Repository.writeFile repo name contents
   Index.addFile index name 1  
-runIndexOp repo index (Remove name) =
+runIndexOp _ index (Remove name) =
   Index.find index name >>= maybe (return ()) (const $ Index.remove index name)
   
+withIndexAndRepo::Testable a => [IndexOp] -> (Index.Index -> Repository.Repository -> IO a) -> Property  
 withIndexAndRepo indexOps c = with_repo $ \repo -> do          
   index <-Index.open repo
-  runIndexOp repo index `mapM` indexOps
+  runIndexOp repo index `mapM_` indexOps
   c index repo
 
-withIndex before c = withIndexAndRepo before $ \index repo -> c index
+withIndex::Testable a => [IndexOp] -> (Index.Index -> IO a) -> Property
+withIndex before c = withIndexAndRepo before $ \index _ -> c index

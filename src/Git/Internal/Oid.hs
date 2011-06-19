@@ -1,3 +1,4 @@
+{-# LANGUAGE NamedFieldPuns #-}
 module Git.Internal.Oid (Oid, fmt, mkstr, withCOid, fromCOid, fromCOidStruct, withCOids) where
 import Bindings.Libgit2
 import Foreign.ForeignPtr
@@ -29,13 +30,13 @@ fmt (Oid fptr) = unsafePerformIO $ do
 mkstr :: String -> Oid
 mkstr string = unsafePerformIO $ do
   fptr <- mallocForeignPtr 
-  withForeignPtr fptr $ \ptr -> 
+  _ <- withForeignPtr fptr $ \ptr -> 
     withCString string $ \c'string ->
     c'git_oid_mkstr ptr c'string
   return $ Oid fptr 
 
 withCOid::Oid -> (Ptr C'git_oid -> IO a) -> IO a
-withCOid (Oid oid_ptr) c = withForeignPtr oid_ptr $ \ptr -> 
+withCOid Oid { oid_ptr }  c = withForeignPtr oid_ptr $ \ptr -> 
   alloca $ \tmp -> peek ptr >>= poke tmp >> c tmp
 
 withCOids::[Oid] -> ([Ptr C'git_oid] -> IO a) -> IO a

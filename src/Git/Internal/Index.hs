@@ -14,8 +14,6 @@ module Git.Internal.Index (
   , withCIndex
   ) where
 
-import qualified Data.ByteString as ByteString
-import qualified Git.Repository as Repository
 import Git.Internal.Repository
 import Foreign.ForeignPtr hiding (newForeignPtr)
 import Foreign.Concurrent
@@ -25,12 +23,9 @@ import Foreign.Storable
 import Foreign.C.String
 import Git.Internal.Result
 import Data.Word
-import Data.Int
-import Data.Char
 import Git.Internal.Oid
 import Git.Types
 import Git.Error
-import System.FilePath
 import Control.Exception
 import System.Posix.Types
 
@@ -63,18 +58,18 @@ type Stage = Int
 
 {-| Add file under the repository 'workdir' to the index
 
->>> repo <- Repository.init "addFile-repo"
->>> index <- open repo
+>>> repo <- Git.Repository.init "addFile-repo"
+>>> index <- Git.Index.open repo
 
 If the file does not exist an exception is raised
 
->>> addFile index (unsafePathToEntry "abc") 1
+>>> Git.Index.addFile index (unsafePathToEntry "abc") 1
 *** Exception: Error {error_code = -3, error_explanation = "Cannot read reference file 'packed-refs'"}
 
 The 'error_explanation' above is incorrect. Such is life. If the file exists it will be added to the index
 
->>> Repository.writeFile repo (unsafePathToEntry "abc") $ ByteString.singleton $ toEnum $ ord 'a'
->>> addFile index (unsafePathToEntry "abc") 1
+>>> Git.Repository.writeFile repo (unsafePathToEntry "abc") $ Data.ByteString.singleton $ toEnum $ Data.Char.ord 'a'
+>>> Git.Index.addFile index (unsafePathToEntry "abc") 1
 
 -}
 addFile::Index -> EntryName -> Stage -> IO ()
@@ -96,7 +91,7 @@ remove index name = withCIndex index $ \c'index ->
 
 First create a repository and open the index     
   
->>> repo <- Repository.init "find-index-repo"
+>>> repo <- Git.Repository.init "find-index-repo"
 >>> index <- open repo     
 
 If the entry is not present 'find' returns 'Nothing'
@@ -105,7 +100,7 @@ If the entry is not present 'find' returns 'Nothing'
 
 Now if we 'addFile' the entry to index 'find' returns the 'Entry'    
 
->>> Repository.writeFile repo (unsafePathToEntry "abc") $ ByteString.singleton $ toEnum $ ord 'a'     
+>>> Git.Repository.writeFile repo (unsafePathToEntry "abc") $ Data.ByteString.singleton $ toEnum $ Data.Char.ord 'a'     
 >>> addFile index (unsafePathToEntry "abc") 1
 >>> Just e <- find index $ unsafePathToEntry "abc"
     
@@ -147,7 +142,7 @@ fromCIndexTime (C'git_index_time sec nsec) = Time { time_epoch = sec, time_nsec 
 fromCEntry::Ptr C'git_index_entry -> IO Entry
 fromCEntry c'entry = peek c'entry >>= go
   where 
-    go (C'git_index_entry ctime mtime dev ino mode uid gid file_size c'oid flags flags_x c'path) = do 
+    go (C'git_index_entry ctime mtime dev ino mode uid gid file_size c'oid _flags _flags_x c'path) = do 
       h'oid <- fromCOidStruct c'oid
       h'path <- unsafePathToEntry `fmap` peekCString c'path
       return $ Entry (fromCIndexTime ctime) (fromCIndexTime mtime) (fromIntegral dev) 

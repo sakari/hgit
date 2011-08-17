@@ -23,7 +23,7 @@ test-suite git_test
     QuickCheck >= 2.4.0.0,
     test-framework,
     test-framework-quickcheck2,
-    hlibgit2,
+    hlibgit2 >= 0.1,
     directory,
     temporary,
     containers,
@@ -36,7 +36,7 @@ library
   if !flag(bundled-libgit2)
     extra-libraries : git2
   build-depends:
-    hlibgit2,
+    hlibgit2 >= 0.1,
     bytestring,
     base,
     containers,

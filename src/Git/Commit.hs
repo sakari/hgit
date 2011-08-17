@@ -84,7 +84,7 @@ withForeignPtrs fptrs action = go fptrs []
     go [] fptrs = action $ reverse fptrs
     go (a:as) fptrs = withForeignPtr a $ \fptr -> go as (fptr:fptrs) 
 
-create::WithAnyRepository repo => repo -> Maybe Ref -> Author -> Committer -> Message -> OidT Tree -> [OidT Commit] -> IO (OidT Commit) 
+create::WithAnyRepository repo => repo -> Maybe Ref -> Author -> Committer -> Message -> Tree -> [Commit] -> IO (OidT Commit) 
 create repo ref author committer message tree parents = do  
   alloca $ \result_oid_ptr -> do
     withCAnyRepository repo $ \repo_ptr -> do
@@ -92,10 +92,10 @@ create repo ref author committer message tree parents = do
         with_signature_ptr author $ \c'author_ptr -> do
           with_signature_ptr committer $ \ c'committer_ptr -> do
             withCString message $ \message_ptr -> do
-              withCOid tree $ \tree_ptr -> do
-                withCOids parents $ \parent_oid_ptrs -> do
-                  withArray parent_oid_ptrs $ \parent_oid_array -> do
-                    c'git_commit_create result_oid_ptr repo_ptr ref_ptr c'author_ptr c'committer_ptr message_ptr tree_ptr (fromIntegral $ length parents) parent_oid_array `wrap_git_result` fromCOid result_oid_ptr
+              withCTree tree $ \tree_ptr -> do
+                withMany (withForeignPtr . commit_ptr) parents $ \parent_ptrs -> do
+                  withArray parent_ptrs $ \parent_array -> do
+                    c'git_commit_create result_oid_ptr repo_ptr ref_ptr c'author_ptr c'committer_ptr message_ptr tree_ptr (fromIntegral $ length parents) parent_array `wrap_git_result` fromCOid result_oid_ptr
 
 fromCTime::C'git_time -> Time
 fromCTime (C'git_time stamp offset) = Time (fromIntegral $ fromEnum stamp) (fromIntegral offset)

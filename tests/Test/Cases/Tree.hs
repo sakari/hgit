@@ -41,7 +41,7 @@ tests = testGroup "Test.Cases.Tree"
              sort entries `assertEqual` (sort $ map go paths)
              
         , testProperty "Finding entry 'b' succeeds (https://github.com/libgit2/libgit2/issues/127)" $ with_repo $ \repo -> do
-             let zeroOid = Oid.mkstr $ replicate 40 '0' 
+             let zeroOid = Oid.fromstr $ replicate 40 '0' 
                  name = Types.unsafePathToEntry "b"
                  attrs = Types.Attributes 0
                  target = Types.TreeEntry name zeroOid attrs                 
@@ -73,7 +73,7 @@ tests = testGroup "Test.Cases.Tree"
              Nothing `assertEqual` entry
              
         , testProperty "Bug: Removing entry fails" $ with_repo $ \repo -> do
-             let zeroOid = Oid.mkstr $ replicate 40 '0' 
+             let zeroOid = Oid.fromstr $ replicate 40 '0' 
                  name = Types.unsafePathToEntry "b"
                  attrs = Types.Attributes 0
                  target = Types.TreeEntry name zeroOid attrs                 

@@ -6,6 +6,7 @@ module Git.Tree (Tree
                 , fromIndex
                 , entry
                 , entries
+                , withCTree
                 ) where
 import Bindings.Libgit2
 import Foreign.ForeignPtr
@@ -37,7 +38,7 @@ fromIndex index = withCIndex index $ \c'index ->
   alloca $ \c'oid -> do 
     c'git_tree_create_fromindex c'oid c'index `wrap_git_result` fromCOid c'oid 
   
-write::WithAnyRepository repo => repo -> Map.Map EntryName (Oid, Attributes) -> IO Oid
+write :: WithAnyRepository repo => repo -> Map.Map EntryName (Oid, Attributes) -> IO Oid
 write repo paths = do
   builder <- Builder.create
   let build k (oid, attr) = TreeEntry k oid attr 

@@ -116,7 +116,7 @@ find index name  = withCIndex index $ \ c'index -> withCString (entryToPath name
   result <- c'git_index_find c'index c'path
   if result < 0 then return Nothing
     else do
-    ptr <- c'git_index_get c'index result
+    ptr <- c'git_index_get c'index $ fromInteger $ toInteger result
     if ptr == nullPtr then throwIO (IndexOutOfBounds "index out of bounds")
       else Just `fmap` fromCEntry ptr
 
@@ -125,7 +125,7 @@ find index name  = withCIndex index $ \ c'index -> withCString (entryToPath name
 open::Repository -> IO Index
 open repo = withCFRepository repo $ \f'repo -> 
   withForeignPtr f'repo $ \c'repo -> alloca $ \c'index ->
-    c'git_index_open_inrepo c'index c'repo `wrap_git_result` (peek c'index >>= fromCIndex f'repo)
+    c'git_repository_index c'index c'repo `wrap_git_result` (peek c'index >>= fromCIndex f'repo)
 
 -- | Write in-memory index to disk
     

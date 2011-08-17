@@ -17,9 +17,9 @@ import qualified Data.Set as Set
 import System.Posix.Types
 
 instance Arbitrary Oid where
-  arbitrary = fmap mkstr $ vectorOf 40 $ elements $ ['a' .. 'f'] ++ ['A' .. 'F'] ++ ['0' .. '9']
+  arbitrary = fmap fromstr $ vectorOf 40 $ elements $ ['a' .. 'f'] ++ ['A' .. 'F'] ++ ['0' .. '9']
   shrink oid | fmt oid == replicate 40 '0' = []
-             | otherwise = fmap mkstr $ (pad . filter isHexDigit) `map` shrink (fmt oid)   
+             | otherwise = fmap fromstr $ (pad . filter isHexDigit) `map` shrink (fmt oid)   
          where
             pad str = replicate (40 - length str) '0' ++ take 40 str
 

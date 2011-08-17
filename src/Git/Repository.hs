@@ -96,7 +96,7 @@ open path = alloca $ \c'repo -> do
     c'git_repository_open c'repo c'path `wrap_git_result` peek c'repo >>= go 
   where
     go c'repo = do
-      r <- (nullPtr == ) `fmap` c'git_repository_workdir c'repo
+      r <- (nullPtr == ) `fmap` c'git_repository_path c'repo c'GIT_REPO_PATH_WORKDIR
       if r then bare c'repo 
            else repo c'repo
       
@@ -109,7 +109,7 @@ openAny path = alloca $ \c'repo -> do
 
 workdir::Repository -> IO FilePath
 workdir repo = withCRepository repo $ \c'repo -> 
-  c'git_repository_workdir c'repo >>= (fmap Prelude.init . peekCString)
+  c'git_repository_path c'repo c'GIT_REPO_PATH_WORKDIR >>= (fmap Prelude.init . peekCString)
 
 -- | Write 'ByteString' to repository 'workdir'
 -- The following holds between 'workdir' and 'writeFile'

@@ -1,4 +1,4 @@
-module Git.Internal.Oid (Oid, fmt, mkstr, withCOid, fromCOid, fromCOidStruct, withCOids) where
+module Git.Internal.Oid (Oid, fmt, fromstr, withCOid, fromCOid, fromCOidStruct, withCOids) where
 import Bindings.Libgit2
 import Foreign.ForeignPtr
 import Foreign.Ptr
@@ -26,12 +26,12 @@ fmt (Oid fptr) = unsafePerformIO $ do
       c'git_oid_fmt c'string ptr
       peekCString c'string
 
-mkstr :: String -> Oid
-mkstr string = unsafePerformIO $ do
+fromstr :: String -> Oid
+fromstr string = unsafePerformIO $ do
   fptr <- mallocForeignPtr 
   withForeignPtr fptr $ \ptr -> 
     withCString string $ \c'string ->
-    c'git_oid_mkstr ptr c'string
+    c'git_oid_fromstr ptr c'string
   return $ Oid fptr 
 
 withCOid::Oid -> (Ptr C'git_oid -> IO a) -> IO a

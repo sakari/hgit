@@ -17,11 +17,11 @@ with_repo :: (Testable a) => (Repository -> IO a) -> Property
 with_repo c = morallyDubiousIOProperty $ do
   withSystemTempDirectory "tmp_git" $ \p -> init p >>= c
 
-success:: IO a -> IO ()
-success c = c >> return ()
+success:: IO a -> IO Bool
+success c = c >> return True
 
-fails :: IO a -> IO ()
-fails c = go  `catch` (\Error {} -> return ())
+fails :: IO a -> IO Bool
+fails c = go  `catch` (\Error {} -> return True)
   where
     go = c >> throwIO (AssertionFailed "Expected Git.Error exception, but dit not get any exception")
   

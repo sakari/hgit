@@ -13,7 +13,7 @@ prop_lookup_non_existing_commit oid =
   with_repo $ \repo -> do
     fails $ Commit.lookup repo oid
     
-prop_lookup_existing_commit = error "tbd: test lookup existing commit"::() 
+prop_lookup_existing_commit = error "tbd: test lookup existing commit"::Bool 
     
 tests = testGroup "Test.Cases.Commit" [ testProperty "lookup non existing commit" prop_lookup_non_existing_commit
                                       , testProperty "lookup an existing commit" prop_lookup_existing_commit
